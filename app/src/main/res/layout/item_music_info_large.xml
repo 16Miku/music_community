@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="120dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:gravity="center_horizontal"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?attr/selectableItemBackground">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="0dp"
+        android:layout_marginBottom="8dp">
+
+        <ImageView
+        android:id="@+id/iv_music_cover_large"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="Music Cover" />
+    </androidx.cardview.widget.CardView>
+
+    <TextView
+        android:id="@+id/tv_music_name_large"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="歌曲名称"
+        android:textSize="14sp"
+        android:textColor="@android:color/black"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="2dp"/>
+
+    <TextView
+        android:id="@+id/tv_music_author_large"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="歌手名称"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:gravity="center_horizontal"/>
+
+</LinearLayout>

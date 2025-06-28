@@ -46,6 +46,12 @@ dependencies {
     implementation("androidx.core:core-ktx:1.10.0") // 可以使用最新稳定版本
 
 
+    // **新增：解决 NestedScrollingParent 错误，提供旧Support Library兼容性**
+    implementation("androidx.legacy:legacy-support-v4:1.0.0")
+
+
+
+
 
 
     // 添加 RecyclerView 依赖，如果您的项目中还没有
@@ -84,6 +90,13 @@ dependencies {
 
     // RecyclerViewPreloader 是 Glide 官方提供的集成库，用于优化 RecyclerView 滚动性能
     implementation("com.github.bumptech.glide:recyclerview-integration:4.16.0")
+
+
+
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0") // 新增日志拦截器依赖
 
 
 

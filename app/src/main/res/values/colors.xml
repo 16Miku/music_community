@@ -18,4 +18,7 @@
     <color name="splash_background">#E8E8E8</color> <!-- 闪屏页背景更深的浅灰色，匹配原型图 -->
     <color name="overlay_dark">#A0000000</color> <!-- 半透明深灰色蒙版，62.5% 透明度，进一步调整 -->
     <color name="disagree_text_color">#616161</color> <!-- "不同意" 文本的颜色，调整为更深的灰色 -->
+
+
+
 </resources>
