@@ -34,6 +34,6 @@
         android:paddingEnd="8dp"
         app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
         app:spanCount="2"
-        tools:listitem="@layout/item_music_info_small" />
+        tools:listitem="@layout/item_music_info_square" />
 
 </LinearLayout>

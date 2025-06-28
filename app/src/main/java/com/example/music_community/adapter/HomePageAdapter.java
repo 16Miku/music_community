@@ -114,7 +114,7 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
                 TextView tvHorizontalCardTitle = holder.getView(R.id.tv_module_title_horizontal_card);
                 RecyclerView recyclerViewHorizontalCard = holder.getView(R.id.recyclerView_horizontal_card);
 
-                tvHorizontalCardTitle.setText("专属好歌");
+                tvHorizontalCardTitle.setText(R.string.module_title_horizontal_card);
 
                 recyclerViewHorizontalCard.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
 
@@ -127,12 +127,12 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
                 TextView tvOneColumnTitle = holder.getView(R.id.tv_module_title_one_column);
                 RecyclerView recyclerViewOneColumn = holder.getView(R.id.recyclerView_one_column);
 
-                tvOneColumnTitle.setText("每日推荐");
+                // **修改：引用字符串资源**
+                tvOneColumnTitle.setText(R.string.module_title_one_column);
 
-                recyclerViewOneColumn.setLayoutManager(new LinearLayoutManager(getContext()));
-
-                // 调用 MusicItemAdapter 新的构造函数，传入布局ID
-                MusicItemAdapter oneColumnAdapter = new MusicItemAdapter(R.layout.item_music_info_small, item.getMusicInfoList());
+                // **修改：每日推荐改为横向滑动，并使用新的矮长布局**
+                recyclerViewOneColumn.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+                MusicItemAdapter oneColumnAdapter = new MusicItemAdapter(R.layout.item_music_info_tall_narrow, item.getMusicInfoList()); // **使用新的布局**
                 recyclerViewOneColumn.setAdapter(oneColumnAdapter);
                 break;
 
@@ -140,12 +140,12 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
                 TextView tvTwoColumnsTitle = holder.getView(R.id.tv_module_title_two_columns);
                 RecyclerView recyclerViewTwoColumns = holder.getView(R.id.recyclerView_two_columns);
 
-                tvTwoColumnsTitle.setText("热门金曲");
+                // **修改：引用字符串资源**
+                tvTwoColumnsTitle.setText(R.string.module_title_two_columns);
 
+                // **修改：热门金曲使用新的正方形布局**
                 recyclerViewTwoColumns.setLayoutManager(new GridLayoutManager(getContext(), 2)); // 两列网格布局
-
-                // 调用 MusicItemAdapter 新的构造函数，传入布局ID
-                MusicItemAdapter twoColumnsAdapter = new MusicItemAdapter(R.layout.item_music_info_small, item.getMusicInfoList());
+                MusicItemAdapter twoColumnsAdapter = new MusicItemAdapter(R.layout.item_music_info_square, item.getMusicInfoList()); // **使用新的布局**
                 recyclerViewTwoColumns.setAdapter(twoColumnsAdapter);
                 break;
         }

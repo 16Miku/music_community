@@ -2,11 +2,10 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="280dp"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingStart="8dp"
-    android:paddingEnd="8dp"
+    android:padding="8dp"
     android:gravity="center_horizontal"
     android:clickable="true"
     android:focusable="true"
@@ -14,22 +13,31 @@
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="160dp"
+        android:layout_height="wrap_content"
         app:cardCornerRadius="8dp"
         app:cardElevation="2dp"
         android:layout_marginBottom="8dp">
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content">
 
-            <!-- 音乐封面图片 -->
-            <ImageView
-                android:id="@+id/iv_music_cover_large"
+            <!-- 封面图片，使用 ConstraintLayout 确保正方形比例 -->
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:contentDescription="Music Cover" />
+                android:layout_height="wrap_content">
+                <ImageView
+                    android:id="@+id/iv_music_cover_square"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Music Cover"
+                    app:layout_constraintDimensionRatio="1:1"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <!-- 渐变蒙层，覆盖在图片上方 -->
             <View
@@ -47,11 +55,11 @@
 
                 <!-- 歌曲名称 -->
                 <TextView
-                    android:id="@+id/tv_music_name_large"
+                    android:id="@+id/tv_music_name_square"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="歌曲名称"
-                    android:textSize="16sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     android:textColor="@android:color/white"
                     android:maxLines="1"
@@ -64,11 +72,11 @@
 
                 <!-- 歌手名称 -->
                 <TextView
-                    android:id="@+id/tv_music_author_large"
+                    android:id="@+id/tv_music_author_square"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="歌手名称"
-                    android:textSize="13sp"
+                    android:textSize="11sp"
                     android:textColor="@android:color/white"
                     android:maxLines="1"
                     android:ellipsize="end"
@@ -80,20 +88,19 @@
 
             <!-- 播放按钮 -->
             <ImageView
-                android:id="@+id/iv_play_button_large"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:id="@+id/iv_play_button_square"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:src="@drawable/ic_play"
-                android:layout_gravity="bottom"
-                android:layout_marginStart="200dp"
+                android:layout_gravity="center"
+                android:layout_marginStart="80dp"
+                android:layout_marginTop="80dp"
                 android:contentDescription="Play button"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"/>
+                android:padding="6dp"/>
 
         </FrameLayout>
-
     </androidx.cardview.widget.CardView>
-
 </LinearLayout>
