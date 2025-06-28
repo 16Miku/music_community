@@ -2,6 +2,33 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.Music_community" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorPrimary">@color/purple_200</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_200</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+    </style>
+
+    <!-- 新增：无ActionBar的闪屏页主题，继承自 Material3 -->
+    <style name="Theme.Music_community.NoActionBar" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/purple_200</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/black</item>
+        <!-- **重点：夜间模式状态栏颜色，可以根据您的设计选择深色或与背景一致** -->
+        <item name="android:statusBarColor" tools:targetApi="l">@color/black</item>
+        <!-- **重点：夜间模式状态栏图标为浅色，适用于深色状态栏背景** -->
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+    </style>
+
+    <!-- PrivacyDialogFragment 的主题样式 (夜间模式) -->
+    <style name="Theme.Music_community.PrivacyDialog" parent="Theme.AppCompat.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:backgroundDimEnabled">false</item>
     </style>
 </resources>

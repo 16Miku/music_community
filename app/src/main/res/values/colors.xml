@@ -1,5 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 基础颜色，可以根据您的主题进行调整 -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- UI 还原所需的颜色 -->
+    <color name="gray_text">#757575</color> <!-- 隐私协议内容的灰色 -->
+    <color name="dialog_background_white">#FFFFFF</color> <!-- 弹窗背景白色 -->
+    <color name="button_blue">#1A73E8</color> <!-- "同意并使用" 按钮的蓝色，更接近原型图的深蓝色 -->
+    <color name="link_blue">#1A73E8</color> <!-- 协议链接的蓝色，与按钮蓝色一致 -->
+    <color name="light_gray_border">#CCCCCC</color> <!-- 弹窗边框颜色，如果需要的话 -->
+    <color name="splash_background">#E8E8E8</color> <!-- 闪屏页背景更深的浅灰色，匹配原型图 -->
+    <color name="overlay_dark">#A0000000</color> <!-- 半透明深灰色蒙版，62.5% 透明度，进一步调整 -->
+    <color name="disagree_text_color">#616161</color> <!-- "不同意" 文本的颜色，调整为更深的灰色 -->
 </resources>
