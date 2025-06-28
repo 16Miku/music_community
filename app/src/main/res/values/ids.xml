@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 用于 HomePageAdapter 中横滑大卡 RecyclerView 的滚动监听器 Tag -->
+    <item type="id" name="horizontal_scroll_listener_tag" />
+    <!-- 用于 HomePageAdapter 中横滑大卡 RecyclerView 的初始化状态 Tag -->
+    <item type="id" name="horizontal_scroll_initialized_tag" />
+</resources>
+
+
