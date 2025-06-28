@@ -15,7 +15,7 @@
         android:id="@+id/tv_module_title_one_column"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="一行一列"
+        android:text="@string/module_title_one_column"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="@android:color/black"

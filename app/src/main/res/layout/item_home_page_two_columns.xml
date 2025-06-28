@@ -15,7 +15,7 @@
         android:id="@+id/tv_module_title_two_columns"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="一行两列"
+        android:text="@string/module_title_two_columns"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="@android:color/black"
@@ -30,12 +30,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:nestedScrollingEnabled="false"
-    android:paddingStart="8dp"
-    android:paddingEnd="8dp"
-    app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
-    app:spanCount="2"
-    tools:listitem="@layout/item_music_info_small" />
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        app:layoutManager="androidx.recyclerview.widget.GridLayoutManager"
+        app:spanCount="2"
+        tools:listitem="@layout/item_music_info_small" />
 
 </LinearLayout>
-
-

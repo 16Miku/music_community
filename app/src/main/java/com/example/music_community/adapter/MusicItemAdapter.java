@@ -18,17 +18,11 @@ import java.util.List;
 
 public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder> {
 
-    // 移除了 itemType 字段，因为布局ID将直接从构造函数传入，适配器本身不再需要区分类型
-    private int currentLayoutResId; // **新增：用于存储当前适配器实例使用的布局ID**
+    private int currentLayoutResId;
 
-    /**
-     * 构造函数
-     * @param layoutResId 当前 MusicItemAdapter 实例要使用的布局资源ID (例如 item_music_info_large 或 item_music_info_small)
-     * @param data 音乐信息列表
-     */
     public MusicItemAdapter(int layoutResId, List<MusicInfo> data) {
-        super(layoutResId, data); // **核心修改：这里传入布局ID和数据列表**
-        this.currentLayoutResId = layoutResId; // **保存传入的布局ID**
+        super(layoutResId, data);
+        this.currentLayoutResId = layoutResId;
 
         // 设置 Item 点击监听器
         setOnItemClickListener(new OnItemClickListener() {
@@ -41,9 +35,8 @@ public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder
             }
         });
 
-        // 根据传入的布局ID判断是否需要注册加号按钮的点击事件
-        // 只有 item_music_info_small 布局包含 iv_add_music
-        if (currentLayoutResId == R.layout.item_music_info_small) { // **使用保存的布局ID进行判断**
+        // 根据传入的布局ID判断是否需要注册加号按钮或播放按钮的点击事件
+        if (currentLayoutResId == R.layout.item_music_info_small) {
             addChildClickViewIds(R.id.iv_add_music); // 注册加号按钮的点击事件
             setOnItemChildClickListener((adapter, view, position) -> {
                 if (view.getId() == R.id.iv_add_music) {
@@ -53,26 +46,42 @@ public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder
                     }
                 }
             });
+        } else if (currentLayoutResId == R.layout.item_music_info_large) {
+            addChildClickViewIds(R.id.iv_play_button_large); // 注册播放按钮的点击事件
+            setOnItemChildClickListener((adapter, view, position) -> {
+                if (view.getId() == R.id.iv_play_button_large) {
+                    MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
+                    if (clickedItem != null) {
+                        Toast.makeText(view.getContext(), "播放音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
         }
     }
-
-    // 移除了 setChildLayout 方法，因为布局ID直接在构造函数中设置
 
     @Override
     protected void convert(@NonNull BaseViewHolder holder, MusicInfo item) {
         ImageView coverImageView;
         TextView musicNameTextView;
         TextView authorTextView;
+        ImageView playButton; // 新增播放按钮引用
 
-        // **核心修改：使用保存的布局ID来判断当前 Item 的布局类型，而不是 holder.getLayoutId()**
         if (currentLayoutResId == R.layout.item_music_info_large) {
             coverImageView = holder.getView(R.id.iv_music_cover_large);
             musicNameTextView = holder.getView(R.id.tv_music_name_large);
             authorTextView = holder.getView(R.id.tv_music_author_large);
+            playButton = holder.getView(R.id.iv_play_button_large); // 查找播放按钮
+
+            // 设置播放按钮可见
+            playButton.setVisibility(View.VISIBLE);
+
+
         } else { // currentLayoutResId == R.layout.item_music_info_small
             coverImageView = holder.getView(R.id.iv_music_cover_small);
             musicNameTextView = holder.getView(R.id.tv_music_name_small);
             authorTextView = holder.getView(R.id.tv_music_author_small);
+            // 对于小卡片，可能没有播放按钮，或者需要隐藏
+            // ImageView addMusicButton = holder.getView(R.id.iv_add_music);
         }
 
         // 使用 Glide 加载图片

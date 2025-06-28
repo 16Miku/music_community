@@ -114,7 +114,7 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
                 TextView tvHorizontalCardTitle = holder.getView(R.id.tv_module_title_horizontal_card);
                 RecyclerView recyclerViewHorizontalCard = holder.getView(R.id.recyclerView_horizontal_card);
 
-                tvHorizontalCardTitle.setText(item.getModuleName() != null ? item.getModuleName() : "横滑大卡");
+                tvHorizontalCardTitle.setText("专属好歌");
 
                 recyclerViewHorizontalCard.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
 
@@ -127,7 +127,7 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
                 TextView tvOneColumnTitle = holder.getView(R.id.tv_module_title_one_column);
                 RecyclerView recyclerViewOneColumn = holder.getView(R.id.recyclerView_one_column);
 
-                tvOneColumnTitle.setText(item.getModuleName() != null ? item.getModuleName() : "一行一列");
+                tvOneColumnTitle.setText("每日推荐");
 
                 recyclerViewOneColumn.setLayoutManager(new LinearLayoutManager(getContext()));
 
@@ -140,7 +140,7 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
                 TextView tvTwoColumnsTitle = holder.getView(R.id.tv_module_title_two_columns);
                 RecyclerView recyclerViewTwoColumns = holder.getView(R.id.recyclerView_two_columns);
 
-                tvTwoColumnsTitle.setText(item.getModuleName() != null ? item.getModuleName() : "一行两列");
+                tvTwoColumnsTitle.setText("热门金曲");
 
                 recyclerViewTwoColumns.setLayoutManager(new GridLayoutManager(getContext(), 2)); // 两列网格布局
 

@@ -5,7 +5,7 @@
     <string name="splash_slogan">听你想听</string>
     <!-- 隐私协议弹窗标题 -->
     <string name="privacy_dialog_title">声明与条款</string>
-    <!-- **重点：隐私协议弹窗内容 - 根据新原型图精确修改** -->
+    <!-- 隐私协议弹窗内容 - 根据新原型图精确修改 -->
     <string name="privacy_dialog_content">
         欢迎使用音乐社区，我们将严格遵守相关法律和隐私政策保护您的个人隐私，请您阅读并同意《用户协议》与《隐私政策》。
     </string>
@@ -15,4 +15,9 @@
     <!-- 协议链接文本 -->
     <string name="user_agreement_text">《用户协议》</string>
     <string name="privacy_policy_text">《隐私政策》</string>
+
+    <!-- **新增：模块标题字符串** -->
+    <string name="module_title_horizontal_card">专属好歌</string>
+    <string name="module_title_one_column">每日推荐</string>
+    <string name="module_title_two_columns">热门金曲</string>
 </resources>

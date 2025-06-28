@@ -15,7 +15,7 @@
         android:id="@+id/tv_module_title_horizontal_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="专属好歌"
+        android:text="@string/module_title_horizontal_card"
         android:textSize="20sp"
         android:textStyle="bold"
         android:textColor="@android:color/black"
@@ -37,5 +37,3 @@
         tools:listitem="@layout/item_music_info_large" />
 
 </LinearLayout>
-
-
