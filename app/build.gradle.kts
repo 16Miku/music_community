@@ -78,6 +78,10 @@ dependencies {
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
+    // Glide 图片转换库，用于模糊、圆角等效果
+    implementation("jp.wasabeef:glide-transformations:4.3.0")
+
+
     // CardView 依赖
     implementation("androidx.cardview:cardview:1.0.0")
 
@@ -97,6 +101,15 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0") // 新增日志拦截器依赖
+
+
+
+    // 【新增】MediaSession 依赖
+    implementation("androidx.media:media:1.7.0") // 可以使用最新稳定版本
+
+
+    // 【新增】用于 Palette 库，提取图片主题色 (为后续步骤做准备，现在添加)
+    implementation("androidx.palette:palette:1.0.0")
 
 
 

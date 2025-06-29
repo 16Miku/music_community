@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -18,6 +19,10 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.viewpager2.widget.ViewPager2;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
+import jp.wasabeef.glide.transformations.BlurTransformation; // 导入 BlurTransformation
 
 import com.example.music_community.model.MusicInfo;
 
@@ -136,12 +141,21 @@ public class MusicPlayerActivity extends AppCompatActivity {
 //        }
 
 
-        // 【新增】启动并绑定 MusicPlayerService
+        // 【修改】启动并绑定 MusicPlayerService
         Intent serviceIntent = new Intent(this, MusicPlayerService.class);
-        // 对于 Android O (API 26) 及更高版本，如果服务在后台运行，需要使用 startForegroundService
-        // 但这里我们主要通过 bindService 来控制，确保 Service 存活。
-        // 如果希望 Service 在 Activity 销毁后继续播放，则需要 startService，并将其设为前台服务。
-        // 这里为了简化，我们先只用 bindService，后续再添加 startForegroundService 逻辑。
+        // 对于 Android O (API 26) 及更高版本，如果应用在后台，则必须先调用 startForegroundService()
+        // 否则，系统会抛出 IllegalStateException。
+        // 即使应用在前台，也建议使用 startService/startForegroundService 来确保服务生命周期独立于 Activity。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+            startForegroundService(serviceIntent);
+
+        } else {
+
+            startService(serviceIntent);
+
+        }
+
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
 
 
@@ -387,12 +401,28 @@ public class MusicPlayerActivity extends AppCompatActivity {
             // 设置歌手名
             tvPlayerAuthor.setText(musicInfo.getAuthor());
 
-            // TODO: 更新背景模糊图片和封面图片 (后续步骤实现)
+
+
+            // 【新增】加载背景模糊图片
+            Glide.with(this)
+                    .load(musicInfo.getCoverUrl())
+                    // 应用 CenterCrop 确保图片填充 ImageView，然后应用模糊转换
+                    .transform(new CenterCrop(), new BlurTransformation(25, 3)) // 模糊半径25，采样率3
+                    .placeholder(R.drawable.ic_launcher_background) // 占位图
+                    .error(R.drawable.ic_launcher_background) // 错误图
+                    .into(ivBackgroundBlur);
+
+
+
         } else {
 
             tvPlayerMusicName.setText("未知歌曲");
 
             tvPlayerAuthor.setText("未知歌手");
+
+            ivBackgroundBlur.setImageResource(R.drawable.ic_launcher_background); // 清除或设置默认背景
+
+
         }
     }
 

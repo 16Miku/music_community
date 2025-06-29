@@ -16,8 +16,16 @@
     <string name="user_agreement_text">《用户协议》</string>
     <string name="privacy_policy_text">《隐私政策》</string>
 
-    <!-- **新增：模块标题字符串** -->
+    <!-- 模块标题字符串** -->
     <string name="module_title_horizontal_card">专属好歌</string>
     <string name="module_title_one_column">每日推荐</string>
     <string name="module_title_two_columns">热门金曲</string>
+
+
+
+    <!-- 通知渠道名称和描述 -->
+    <string name="channel_name">音乐播放</string>
+    <string name="channel_description">用于播放音乐的通知</string>
+
+
 </resources>
