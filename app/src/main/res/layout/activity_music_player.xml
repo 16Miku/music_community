@@ -9,18 +9,7 @@
     android:fitsSystemWindows="true"
     tools:context=".MusicPlayerActivity">
 
-    <!-- 背景模糊图片 (Placeholder, 后面会动态加载) -->
-    <ImageView
-        android:id="@+id/iv_background_blur"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:alpha="0.8"
-        android:contentDescription="Background Blur"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+
 
     <!-- 半透明蒙层 -->
     <View

@@ -13,7 +13,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageView;
+import android.widget.ImageView; // 导入 ImageView 类，用于显示图片
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -36,14 +36,13 @@ import com.bumptech.glide.request.target.Target;
 import com.example.music_community.adapter.PlayerPagerAdapter;
 import com.example.music_community.model.MusicInfo;
 import com.google.android.material.snackbar.Snackbar;
-import jp.wasabeef.glide.transformations.BlurTransformation;
+// import jp.wasabeef.glide.transformations.BlurTransformation; // 【删除】不再需要模糊转换库
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-// 【修改】实现 MusicPlaybackFragmentListener 接口
 public class MusicPlayerActivity extends AppCompatActivity implements MusicPlaybackFragmentListener {
 
     private static final String TAG = "MusicPlayerActivity";
@@ -56,7 +55,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
     // UI 控件声明
     private ImageView ivClosePlayer;
     private ViewPager2 viewPagerPlayer;
-    private ImageView ivBackgroundBlur;
+    // private ImageView ivBackgroundBlur; // 【删除】不再需要背景模糊图片 ImageView
 
     private ConstraintLayout musicPlayerRootLayout;
 
@@ -82,12 +81,10 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
     // ViewPager2 页面切换监听器
     private ViewPager2.OnPageChangeCallback pageChangeCallback;
 
-    // 【新增】持有 MusicPlaybackFragment 的引用
     private MusicPlaybackFragment musicPlaybackFragmentInstance;
 
-    // 【新增】用于存储待处理的音乐信息和播放状态
     private MusicInfo pendingMusicInfo;
-    private Boolean pendingIsPlaying; // 使用 Boolean 类型允许 null (表示没有待处理状态)
+    private Boolean pendingIsPlaying;
 
 
     // 用于绑定 Service 的 ServiceConnection
@@ -99,10 +96,8 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
             musicPlayerService = binder.getService();
             isServiceBound = true;
 
-            // 【关键】将音乐列表和当前播放索引传递给 Service
-            musicPlayerService.setPlayListAndIndex(musicList, currentPlayPosition); // 这会触发音乐播放，并最终导致 onMusicPrepared 被调用
+            musicPlayerService.setPlayListAndIndex(musicList, currentPlayPosition);
 
-            // 注册 Service 的回调监听器
             musicPlayerService.setOnMusicPlayerEventListener(new MusicPlayerService.OnMusicPlayerEventListener() {
                 @Override
                 public void onMusicPrepared(MusicInfo musicInfo) {
@@ -110,10 +105,9 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
                     updateMusicInfoUI(musicInfo);
                     updatePlayPauseButton();
 
-                    // 【修改】更新待处理状态并尝试同步
                     pendingMusicInfo = musicInfo;
-                    pendingIsPlaying = true; // 音乐准备好，表示将开始播放
-                    syncFragmentState(); // 尝试立即同步状态
+                    pendingIsPlaying = true;
+                    syncFragmentState();
                 }
 
                 @Override
@@ -121,10 +115,9 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
                     Log.d(TAG, "onMusicPlayStatusChanged: isPlaying = " + isPlaying);
                     updatePlayPauseButton();
 
-                    // 【修改】更新待处理状态并尝试同步
-                    pendingMusicInfo = musicPlayerService.getCurrentMusic(); // 获取当前音乐
-                    pendingIsPlaying = isPlaying; // 更新播放状态
-                    syncFragmentState(); // 尝试立即同步状态
+                    pendingMusicInfo = musicPlayerService.getCurrentMusic();
+                    pendingIsPlaying = isPlaying;
+                    syncFragmentState();
                 }
 
                 @Override
@@ -133,20 +126,18 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
                     updateMusicInfoUI(nextMusicInfo);
                     updatePlayPauseButton();
 
-                    // 【修改】更新待处理状态并尝试同步
                     pendingMusicInfo = nextMusicInfo;
-                    pendingIsPlaying = true; // 下一首歌曲默认开始播放
-                    syncFragmentState(); // 尝试立即同步状态
+                    pendingIsPlaying = true;
+                    syncFragmentState();
                 }
 
                 @Override
                 public void onMusicError(String errorMessage) {
                     Toast.makeText(MusicPlayerActivity.this, "播放出错: " + errorMessage, Toast.LENGTH_SHORT).show();
 
-                    // 【修改】更新待处理状态并尝试同步
                     pendingMusicInfo = musicPlayerService.getCurrentMusic();
-                    pendingIsPlaying = false; // 播放出错，动画应停止
-                    syncFragmentState(); // 尝试立即同步状态
+                    pendingIsPlaying = false;
+                    syncFragmentState();
                 }
 
                 @Override
@@ -157,21 +148,18 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
             });
 
             // 初始启动时设置待处理状态
-            // 此时 MusicPlayerService.isPlaying() 可能仍为 false，因为 prepareAsync 尚未完成
-            // 我们将依赖 onMusicPrepared 来触发实际的播放状态更新
             if (musicPlayerService.getCurrentMusic() != null) {
                 updateMusicInfoUI(musicPlayerService.getCurrentMusic());
                 updatePlayPauseButton();
                 updateLoopModeIcon(musicPlayerService.getLoopMode());
-                // 设置初始待处理状态，等待 Fragment 报告准备就绪时同步
                 pendingMusicInfo = musicPlayerService.getCurrentMusic();
-                pendingIsPlaying = musicPlayerService.isPlaying(); // 使用当前服务实际的播放状态
+                pendingIsPlaying = musicPlayerService.isPlaying();
             } else {
                 Log.d(TAG, "Service not playing and no current music, UI will be updated when music starts.");
                 pendingMusicInfo = null;
                 pendingIsPlaying = null;
             }
-            syncFragmentState(); // 尝试立即同步一次，如果 Fragment 已经准备好
+            syncFragmentState();
         }
 
         @Override
@@ -181,14 +169,13 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
             musicPlayerService = null;
             stopUpdatingSeekBar();
 
-            // 【修改】服务断开时，清空待处理状态并停止 Fragment 动画
             pendingMusicInfo = null;
             pendingIsPlaying = null;
             if (musicPlaybackFragmentInstance != null) {
-                musicPlaybackFragmentInstance.stopCoverAnimation(); // 直接停止动画
+                musicPlaybackFragmentInstance.stopCoverAnimation();
                 Log.d(TAG, "onServiceDisconnected: MusicPlaybackFragment animation stopped via instance.");
             }
-            musicPlaybackFragmentInstance = null; // 清空 Fragment 引用
+            musicPlaybackFragmentInstance = null;
         }
     };
 
@@ -230,12 +217,11 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         }
         stopUpdatingSeekBar();
 
-        // 【修改】Activity 销毁时，停止 Fragment 动画并清空引用
         if (musicPlaybackFragmentInstance != null) {
             musicPlaybackFragmentInstance.stopCoverAnimation();
             Log.d(TAG, "onDestroy: MusicPlaybackFragment animation stopped via instance.");
         }
-        musicPlaybackFragmentInstance = null; // 清空 Fragment 引用
+        musicPlaybackFragmentInstance = null;
 
         if (viewPagerPlayer != null && pageChangeCallback != null) {
             viewPagerPlayer.unregisterOnPageChangeCallback(pageChangeCallback);
@@ -248,7 +234,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
     private void initViews() {
         ivClosePlayer = findViewById(R.id.iv_close_player);
         viewPagerPlayer = findViewById(R.id.view_pager_player);
-        ivBackgroundBlur = findViewById(R.id.iv_background_blur);
+        // ivBackgroundBlur = findViewById(R.id.iv_background_blur); // 【删除】不再初始化 ivBackgroundBlur
 
         tvPlayerMusicName = findViewById(R.id.tv_player_music_name);
         tvPlayerAuthor = findViewById(R.id.tv_player_author);
@@ -294,16 +280,15 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
                 super.onPageSelected(position);
                 Log.d(TAG, "ViewPager2: onPageSelected, position: " + position);
 
-                // 【修改】页面切换时，更新待处理状态并尝试同步
                 if (position == 0) { // 封面页
                     if (musicPlayerService != null) {
                         pendingMusicInfo = musicPlayerService.getCurrentMusic();
                         pendingIsPlaying = musicPlayerService.isPlaying();
-                        syncFragmentState(); // 尝试同步
+                        syncFragmentState();
                     }
                 } else { // 歌词页或其他页面
                     if (musicPlaybackFragmentInstance != null) {
-                        musicPlaybackFragmentInstance.stopCoverAnimation(); // 直接停止动画
+                        musicPlaybackFragmentInstance.stopCoverAnimation();
                         Log.d(TAG, "onPageSelected: MusicPlaybackFragment animation stopped via instance on non-cover page.");
                     }
                 }
@@ -423,13 +408,14 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         if (musicInfo != null) {
             tvPlayerMusicName.setText(musicInfo.getMusicName());
             tvPlayerAuthor.setText(musicInfo.getAuthor());
+            // 【修改】直接调用 loadBackgroundAndCover，它现在只负责设置背景色
             loadBackgroundAndCover(musicInfo.getCoverUrl());
 
-            playerPagerAdapter.setCurrentMusicInfo(musicInfo); // 更新 ViewPager2 适配器数据
+            playerPagerAdapter.setCurrentMusicInfo(musicInfo);
         } else {
             tvPlayerMusicName.setText("未知歌曲");
             tvPlayerAuthor.setText("未知歌手");
-            ivBackgroundBlur.setImageDrawable(null);
+            // ivBackgroundBlur.setImageDrawable(null); // 【删除】不再操作 ivBackgroundBlur
             playerPagerAdapter.setCurrentMusicInfo(null);
         }
     }
@@ -476,26 +462,29 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
     }
 
     /**
-     * 加载背景模糊图片，并提取主题色设置背景色
+     * 【修改】加载背景主题色
      * @param imageUrl 封面图片URL
      */
     private void loadBackgroundAndCover(String imageUrl) {
         Glide.with(this)
-                .asBitmap()
+                .asBitmap() // 请求位图
                 .load(imageUrl)
-                .apply(RequestOptions.bitmapTransform(new BlurTransformation(25, 3)))
+                // 【删除】不再应用模糊转换
                 .listener(new RequestListener<Bitmap>() {
                     @Override
                     public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Bitmap> target, boolean isFirstResource) {
-                        Log.e(TAG, "背景图加载失败", e);
+                        Log.e(TAG, "背景主题色加载失败", e);
+                        // 加载失败时设置默认背景色
                         musicPlayerRootLayout.setBackgroundColor(Color.parseColor("#333333"));
-                        return false;
+                        return false; // 返回 false 让 Glide 继续处理错误占位符
                     }
 
                     @Override
                     public boolean onResourceReady(Bitmap resource, Object model, Target<Bitmap> target, DataSource dataSource, boolean isFirstResource) {
-                        ivBackgroundBlur.setImageBitmap(resource);
+                        // 【删除】不再设置模糊背景图到 ivBackgroundBlur
+                        // ivBackgroundBlur.setImageBitmap(resource);
 
+                        // 从图片中提取主题色
                         Palette.from(resource).generate(palette -> {
                             if (palette != null) {
                                 int defaultColor = Color.parseColor("#333333");
@@ -516,13 +505,18 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
                                     bgColor = mutedColor;
                                 }
 
-                                findViewById(R.id.music_player_root_layout).setBackgroundColor(bgColor);
+                                musicPlayerRootLayout.setBackgroundColor(bgColor); // 设置根布局的背景色
+                                Log.d(TAG, "loadBackgroundAndCover: Background color set to: " + String.format("#%06X", (0xFFFFFF & bgColor)));
                             }
                         });
-                        return false;
+                        return false; // 返回 false 让 Glide 继续设置图片 (虽然这里不再有图片目标)
                     }
                 })
-                .into(ivBackgroundBlur);
+                // 【删除】不再将图片加载到 ivBackgroundBlur，因为这个 ImageView 已经被删除
+                // .into(ivBackgroundBlur);
+                // 由于不再有 ImageView 目标，这里需要一个替代的 .submit() 或一个简单的 Target 来触发加载
+                // 最简单的方式是使用 .preload() 或一个通用尺寸的 .into()
+                .preload(100, 100); // 预加载图片到内存，触发listener回调，而无需实际显示到ImageView
     }
 
     /**
@@ -563,26 +557,21 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         Snackbar.make(ivLoopMode, message, Snackbar.LENGTH_SHORT).show();
     }
 
-    // 【新增】实现 MusicPlaybackFragmentListener 接口的方法
-
     @Override
     public void onMusicPlaybackFragmentReady(MusicPlaybackFragment fragment) {
         this.musicPlaybackFragmentInstance = fragment;
         Log.d(TAG, "onMusicPlaybackFragmentReady: MusicPlaybackFragment instance received.");
-
-        // 【核心】Fragment 准备好后，尝试同步所有待处理的状态
         syncFragmentState();
     }
 
     @Override
     public void onMusicPlaybackFragmentDetached() {
-        // 当 Fragment 被销毁或分离时，清空引用
         this.musicPlaybackFragmentInstance = null;
         Log.d(TAG, "onMusicPlaybackFragmentDetached: MusicPlaybackFragment instance cleared.");
     }
 
     /**
-     * 【新增】同步 Fragment 的音乐信息和播放状态
+     * 同步 Fragment 的音乐信息和播放状态
      * 只有当 Fragment 实例可用且有待处理状态时才执行
      */
     private void syncFragmentState() {

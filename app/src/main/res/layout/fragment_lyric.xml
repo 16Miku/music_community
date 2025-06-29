@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:background="@android:color/black">
+    tools:background="@android:color/transparent">
 
     <!-- 歌词显示区域，使用ScrollView包裹TextView以实现滚动 -->
     <ScrollView
