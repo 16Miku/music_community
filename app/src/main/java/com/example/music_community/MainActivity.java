@@ -1,153 +1,334 @@
 package com.example.music_community;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.util.Log; // 导入 Log 用于调试输出
-import android.widget.Toast; // 导入 Toast
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.util.Log;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.music_community.adapter.HomePageAdapter;
-import com.example.music_community.api.MusicApiService; // 导入 MusicApiService
-import com.example.music_community.model.HomePageInfo; // 导入 HomePageInfo
-import com.example.music_community.model.HomePageResponse; // 导入 HomePageResponse
-import com.example.music_community.network.RetrofitClient; // 导入 RetrofitClient
+import com.example.music_community.adapter.MusicItemAdapter;
+import com.example.music_community.api.MusicApiService;
+import com.example.music_community.model.HomePageInfo;
+import com.example.music_community.model.HomePageResponse;
+import com.example.music_community.model.MusicInfo;
+import com.example.music_community.network.RetrofitClient;
 import com.scwang.smart.refresh.layout.SmartRefreshLayout;
 import com.scwang.smart.refresh.layout.api.RefreshLayout;
 import com.scwang.smart.refresh.layout.listener.OnLoadMoreListener;
 import com.scwang.smart.refresh.layout.listener.OnRefreshListener;
-import com.scwang.smart.refresh.layout.listener.OnRefreshLoadMoreListener;
 
-import java.util.ArrayList; // 导入 ArrayList
-import java.util.List; // 导入 List
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements MusicItemAdapter.OnMusicItemPlayListener {
 
-    private static final String TAG = "MainActivity"; // 用于日志输出的 TAG
+    private static final String TAG = "MainActivity";
 
-    private SmartRefreshLayout refreshLayout; // 下拉刷新和上拉加载布局
-    private RecyclerView recyclerView; // 音乐首页内容列表
-    private HomePageAdapter homePageAdapter; // RecyclerView 的适配器
-    private List<HomePageInfo> homePageDataList = new ArrayList<>(); // 存储首页数据列表
+    private SmartRefreshLayout refreshLayout;
+    private RecyclerView recyclerView;
+    private HomePageAdapter homePageAdapter;
+    private List<HomePageInfo> homePageDataList = new ArrayList<>();
 
-    private int currentPage = 1; // 当前页码
-    private final int pageSize = 5; // 每页大小，根据文档使用 size=5 模拟上拉加载更多
+    // 悬浮播放器控件
+    private ConstraintLayout floatingPlayerContainer;
+    private ImageView ivFloatingCover;
+    private TextView tvFloatingMusicName;
+    private TextView tvFloatingAuthor;
+    private ImageView ivFloatingPlayPause;
+    private ImageView ivFloatingPlaylist;
+    private ProgressBar progressBarFloating;
+
+    // MusicPlayerService 相关
+    private MusicPlayerService musicPlayerService;
+    private boolean isServiceBound = false;
+    private MusicPlayerService.OnMusicPlayerEventListener musicPlayerListener;
+
+    private int currentPage = 1;
+    private final int pageSize = 5;
+
+    private final Handler progressHandler = new Handler(Looper.getMainLooper());
+    private final Runnable progressRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (isServiceBound && musicPlayerService.isPlaying()) {
+                updateFloatingPlayerProgress();
+            }
+            progressHandler.postDelayed(this, 1000);
+        }
+    };
+
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicPlayerService.MusicPlayerBinder binder = (MusicPlayerService.MusicPlayerBinder) service;
+            musicPlayerService = binder.getService();
+            isServiceBound = true;
+            Log.d(TAG, "MusicPlayerService connected");
+
+            musicPlayerService.addOnMusicPlayerEventListener(musicPlayerListener);
+
+            // 连接成功后，立即同步UI状态
+            updateFloatingPlayerUI(musicPlayerService.getCurrentMusic(), musicPlayerService.isPlaying());
+            if (musicPlayerService.isPlaying()) {
+                startUpdatingProgress();
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isServiceBound = false;
+            Log.d(TAG, "MusicPlayerService disconnected");
+            if (musicPlayerService != null) {
+                musicPlayerService.removeOnMusicPlayerEventListener(musicPlayerListener);
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // EdgeToEdge.enable(this); // 如果需要全屏显示且内容延伸到系统栏，可以保留
         setContentView(R.layout.activity_main);
 
-        // 初始化视图
+        initViews();
+        initHomePage();
+        initMusicPlayerListener();
+        setupFloatingPlayerListeners();
+
+        Intent serviceIntent = new Intent(this, MusicPlayerService.class);
+        startService(serviceIntent);
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 当Activity返回前台时，再次同步UI状态
+        if (isServiceBound) {
+            updateFloatingPlayerUI(musicPlayerService.getCurrentMusic(), musicPlayerService.isPlaying());
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (isServiceBound) {
+            musicPlayerService.removeOnMusicPlayerEventListener(musicPlayerListener);
+            unbindService(serviceConnection);
+            isServiceBound = false;
+        }
+        stopUpdatingProgress();
+    }
+
+    private void initViews() {
         refreshLayout = findViewById(R.id.refreshLayout);
         recyclerView = findViewById(R.id.recyclerView);
 
+        floatingPlayerContainer = findViewById(R.id.floating_player);
 
-        // 初始化适配器并设置给 RecyclerView
-        homePageAdapter = new HomePageAdapter(homePageDataList);
+        if (floatingPlayerContainer != null) {
+            ivFloatingCover = floatingPlayerContainer.findViewById(R.id.iv_floating_cover);
+            tvFloatingMusicName = floatingPlayerContainer.findViewById(R.id.tv_floating_music_name);
+            tvFloatingAuthor = floatingPlayerContainer.findViewById(R.id.tv_floating_author);
+            ivFloatingPlayPause = floatingPlayerContainer.findViewById(R.id.iv_floating_play_pause);
+            ivFloatingPlaylist = floatingPlayerContainer.findViewById(R.id.iv_floating_playlist);
+            progressBarFloating = floatingPlayerContainer.findViewById(R.id.progress_bar_floating);
+        } else {
+            Log.e(TAG, "CRITICAL: Floating player container not found in layout!");
+        }
+    }
+
+    private void initHomePage() {
+        homePageAdapter = new HomePageAdapter(homePageDataList, this); // 将 this 作为播放监听器传入
         recyclerView.setAdapter(homePageAdapter);
 
-        // 设置下拉刷新监听器
-        refreshLayout.setOnRefreshListener(new OnRefreshListener() {
-            @Override
-            public void onRefresh(@NonNull RefreshLayout refreshlayout) {
-                // 执行刷新操作，通常是从第一页开始重新加载数据
-                currentPage = 1; // 重置页码
-                fetchHomePageData(true); // 传入 true 表示是刷新操作
-            }
+        refreshLayout.setOnRefreshListener(refreshlayout -> {
+            currentPage = 1;
+            fetchHomePageData(true);
         });
 
-        // 设置上拉加载更多监听器
-        refreshLayout.setOnLoadMoreListener(new OnLoadMoreListener() {
-            @Override
-            public void onLoadMore(@NonNull RefreshLayout refreshlayout) {
-                // 执行加载更多操作，页码递增
-                currentPage++; // 页码递增
-                fetchHomePageData(false); // 传入 false 表示是加载更多操作
-            }
+        refreshLayout.setOnLoadMoreListener(refreshlayout -> {
+            currentPage++;
+            fetchHomePageData(false);
         });
 
-        // 首次进入页面，自动触发一次下拉刷新，加载第一页数据
         refreshLayout.autoRefresh();
     }
 
-    /**
-     * 从网络获取首页数据
-     * @param isRefresh 是否是下拉刷新操作 (true: 刷新, false: 加载更多)
-     */
-    private void fetchHomePageData(final boolean isRefresh) {
-        // 获取 MusicApiService 实例
-        MusicApiService apiService = RetrofitClient.getApiService(MusicApiService.class);
+    private void initMusicPlayerListener() {
+        musicPlayerListener = new MusicPlayerService.OnMusicPlayerEventListener() {
+            @Override
+            public void onMusicPrepared(MusicInfo musicInfo) {
+                updateFloatingPlayerUI(musicInfo, true);
+                startUpdatingProgress();
+            }
 
-        // 发起网络请求
+            @Override
+            public void onMusicPlayStatusChanged(boolean isPlaying, MusicInfo musicInfo) {
+                updateFloatingPlayerUI(musicInfo, isPlaying);
+                if (isPlaying) {
+                    startUpdatingProgress();
+                } else {
+                    stopUpdatingProgress();
+                }
+            }
+
+            @Override
+            public void onMusicCompleted(MusicInfo nextMusicInfo) {
+                updateFloatingPlayerUI(nextMusicInfo, true);
+            }
+
+            @Override
+            public void onPlaylistChanged(List<MusicInfo> newPlaylist) {
+                // 当前用不到，但为以后功能预留
+            }
+
+            @Override
+            public void onMusicError(String errorMessage) {
+                Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                updateFloatingPlayerUI(null, false);
+            }
+
+            @Override
+            public void onLoopModeChanged(MusicPlayerService.LoopMode newMode) {
+                // 悬浮窗不显示循环模式，暂不处理
+            }
+        };
+    }
+
+    private void setupFloatingPlayerListeners() {
+        if (floatingPlayerContainer == null) {
+            Log.e(TAG, "Cannot setup listeners, floating player container is null.");
+            return;
+        }
+
+        floatingPlayerContainer.setOnClickListener(v -> {
+            // 点击整个悬浮窗，打开全屏播放页
+            Intent intent = new Intent(MainActivity.this, MusicPlayerActivity.class);
+            startActivity(intent);
+            // 使用自定义动画 (从底部向上滑入)
+            overridePendingTransition(R.anim.slide_in_up, 0); // 0 表示当前Activity的退出动画为无
+        });
+
+        ivFloatingPlayPause.setOnClickListener(v -> {
+            if (isServiceBound) {
+                musicPlayerService.togglePlayPause();
+            }
+        });
+
+        ivFloatingPlaylist.setOnClickListener(v -> {
+            Toast.makeText(this, "播放列表功能待开发", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void updateFloatingPlayerUI(MusicInfo musicInfo, boolean isPlaying) {
+        if (floatingPlayerContainer == null) return;
+
+        if (musicInfo != null) {
+            floatingPlayerContainer.setVisibility(View.VISIBLE);
+            tvFloatingMusicName.setText(musicInfo.getMusicName());
+            tvFloatingAuthor.setText(musicInfo.getAuthor());
+            Glide.with(this).load(musicInfo.getCoverUrl()).into(ivFloatingCover);
+            ivFloatingPlayPause.setImageResource(isPlaying ? R.drawable.ic_pause_big : R.drawable.ic_play_big);
+            updateFloatingPlayerProgress();
+        } else {
+            floatingPlayerContainer.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateFloatingPlayerProgress() {
+        if (isServiceBound && musicPlayerService.getDuration() > 0) {
+            progressBarFloating.setMax(musicPlayerService.getDuration());
+            progressBarFloating.setProgress(musicPlayerService.getCurrentPosition());
+        }
+    }
+
+    private void startUpdatingProgress() {
+        progressHandler.removeCallbacks(progressRunnable);
+        progressHandler.post(progressRunnable);
+    }
+
+    private void stopUpdatingProgress() {
+        progressHandler.removeCallbacks(progressRunnable);
+    }
+
+    @Override
+    public void onPlayMusic(List<MusicInfo> musicList, int position) {
+        if (isServiceBound) {
+            // 1. 通知服务播放歌曲
+            musicPlayerService.setPlayListAndIndex(musicList, position);
+            Log.d(TAG, "onPlayMusic: Sent new playlist to service. Song: " + musicList.get(position).getMusicName());
+
+            // 2. 【核心修复】启动 MusicPlayerActivity
+            Intent intent = new Intent(MainActivity.this, MusicPlayerActivity.class);
+            startActivity(intent);
+            // 使用自定义动画 (从底部向上滑入)
+            overridePendingTransition(R.anim.slide_in_up, 0); // 0 表示当前Activity的退出动画为无
+        } else {
+            Toast.makeText(this, "播放服务尚未准备好", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void fetchHomePageData(final boolean isRefresh) {
+        MusicApiService apiService = RetrofitClient.getApiService(MusicApiService.class);
         apiService.getHomePageData(currentPage, pageSize).enqueue(new Callback<HomePageResponse>() {
             @Override
             public void onResponse(@NonNull Call<HomePageResponse> call, @NonNull Response<HomePageResponse> response) {
-                // 请求成功回调
                 if (response.isSuccessful() && response.body() != null) {
                     HomePageResponse homePageResponse = response.body();
-                    if (homePageResponse.getCode() == 200) { // 检查业务返回码
+                    if (homePageResponse.getCode() == 200) {
                         List<HomePageInfo> newRecords = homePageResponse.getData().getRecords();
-
                         if (isRefresh) {
-                            // 如果是刷新操作，清空旧数据并添加新数据
                             homePageDataList.clear();
+                        }
+                        if (newRecords != null && !newRecords.isEmpty()) {
                             homePageDataList.addAll(newRecords);
-                            homePageAdapter.notifyDataSetChanged(); // 通知适配器数据已改变
-                            refreshLayout.finishRefresh(true); // 结束刷新状态
-                            refreshLayout.setEnableLoadMore(true); // 刷新成功后重新启用加载更多
-                            Log.d(TAG, "首页数据刷新成功，当前数据量：" + homePageDataList.size());
-                        } else {
-                            // 如果是加载更多操作，添加新数据
-                            if (newRecords != null && !newRecords.isEmpty()) {
-                                homePageDataList.addAll(newRecords);
-                                homePageAdapter.notifyDataSetChanged(); // 通知适配器数据已改变
-                                refreshLayout.finishLoadMore(true); // 结束加载更多状态
-                                Log.d(TAG, "首页数据加载更多成功，新增：" + newRecords.size() + " 条，当前总数据量：" + homePageDataList.size());
-                            } else {
-                                // 没有更多数据了
-                                refreshLayout.finishLoadMoreWithNoMoreData(); // 结束加载更多，显示没有更多数据
-                                Toast.makeText(MainActivity.this, "没有更多数据了", Toast.LENGTH_SHORT).show();
-                                Log.d(TAG, "没有更多数据了");
-                            }
+                        } else if (!isRefresh) {
+                            Toast.makeText(MainActivity.this, "没有更多数据了", Toast.LENGTH_SHORT).show();
+                            refreshLayout.finishLoadMoreWithNoMoreData();
                         }
+                        homePageAdapter.notifyDataSetChanged();
                     } else {
-                        // 业务返回码不为 200，显示错误信息
                         Toast.makeText(MainActivity.this, "请求失败: " + homePageResponse.getMsg(), Toast.LENGTH_SHORT).show();
-                        Log.e(TAG, "API 业务错误: " + homePageResponse.getMsg());
-                        if (isRefresh) {
-                            refreshLayout.finishRefresh(false); // 结束刷新，表示失败
-                        } else {
-                            refreshLayout.finishLoadMore(false); // 结束加载，表示失败
-                        }
                     }
                 } else {
-                    // HTTP 响应不成功 (例如 404, 500) 或响应体为空
                     Toast.makeText(MainActivity.this, "网络请求失败: " + response.code(), Toast.LENGTH_SHORT).show();
-                    Log.e(TAG, "HTTP 错误: " + response.code() + ", Message: " + response.message());
-                    if (isRefresh) {
-                        refreshLayout.finishRefresh(false);
-                    } else {
-                        refreshLayout.finishLoadMore(false);
-                    }
+                }
+
+                if (isRefresh) {
+                    refreshLayout.finishRefresh();
+                } else {
+                    refreshLayout.finishLoadMore();
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<HomePageResponse> call, @NonNull Throwable t) {
-                // 请求失败（例如网络连接问题）
                 Toast.makeText(MainActivity.this, "网络异常: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                Log.e(TAG, "网络请求异常", t);
                 if (isRefresh) {
-                    refreshLayout.finishRefresh(false); // 结束刷新，表示失败
+                    refreshLayout.finishRefresh(false);
                 } else {
-                    refreshLayout.finishLoadMore(false); // 结束加载，表示失败
+                    refreshLayout.finishLoadMore(false);
                 }
             }
         });

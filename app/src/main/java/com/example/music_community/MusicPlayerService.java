@@ -18,6 +18,10 @@ import android.support.v4.media.session.PlaybackStateCompat; // 导入 PlaybackS
 import android.util.Log;
 import android.widget.Toast;
 
+import java.util.concurrent.CopyOnWriteArrayList; // 【新增】使用线程安全的列表
+
+
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat; // 导入 NotificationCompat
@@ -59,17 +63,31 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
     private List<Integer> shuffledIndexes;
     private int currentShuffledIndex = -1; // 在随机模式下，当前播放的在 shuffledIndexes 中的索引
 
+
+
+    // 【核心修改】将单个监听器改为线程安全的监听器列表
+    private final List<OnMusicPlayerEventListener> listeners = new CopyOnWriteArrayList<>();
+
+
+
     // Service 事件监听器接口
     public interface OnMusicPlayerEventListener {
         void onMusicPrepared(MusicInfo musicInfo); // 音乐准备好播放
-        void onMusicPlayStatusChanged(boolean isPlaying); // 播放状态改变
+
+        void onMusicPlayStatusChanged(boolean isPlaying, MusicInfo musicInfo); // 【修改】增加 MusicInfo 参数
+
         void onMusicCompleted(MusicInfo nextMusicInfo); // 音乐播放完成
+
         void onMusicError(String errorMessage); // 播放出错
+
         void onLoopModeChanged(LoopMode newMode); // 播放模式改变
+
+        void onPlaylistChanged(List<MusicInfo> newPlaylist); // 【新增】播放列表变化的回调
+
 
     }
 
-    private OnMusicPlayerEventListener eventListener; // 事件监听器实例
+//    private OnMusicPlayerEventListener eventListener; // 事件监听器实例
 
     // MediaSessionCompat 用于通知栏媒体控制
     private MediaSessionCompat mediaSession;
@@ -125,7 +143,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
         // 当所有客户端都解绑时，如果服务不是由 startService 启动的，则会销毁。
         // 但我们现在是 startService + bindService，所以解绑不会销毁服务。
         // 可以在这里移除事件监听器，避免内存泄漏
-        eventListener = null;
+//        eventListener = null;
         return super.onUnbind(intent);
     }
 
@@ -158,7 +176,6 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
     @Override
     public void onDestroy() {
         super.onDestroy();
-        Log.d(TAG, "MusicPlayerService onDestroy");
         if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
@@ -167,55 +184,74 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
             mediaSession.setActive(false);
             mediaSession.release();
         }
-        stopForeground(true); // 停止前台服务并移除通知
+        stopForeground(true);
+        listeners.clear();
     }
+
+
+
+    public void addOnMusicPlayerEventListener(OnMusicPlayerEventListener listener) {
+        if (!listeners.contains(listener)) {
+            listeners.add(listener);
+            Log.d(TAG, "Listener added: " + listener.getClass().getSimpleName());
+        }
+    }
+
+    public void removeOnMusicPlayerEventListener(OnMusicPlayerEventListener listener) {
+        listeners.remove(listener);
+        Log.d(TAG, "Listener removed: " + listener.getClass().getSimpleName());
+    }
+
+    public void setPlayListAndIndex(List<MusicInfo> list, int index) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+        this.musicList = new ArrayList<>(list);
+        this.currentMusicIndex = index;
+
+        originalIndexes = new ArrayList<>();
+        for (int i = 0; i < musicList.size(); i++) {
+            originalIndexes.add(i);
+        }
+
+        if (currentLoopMode == LoopMode.SHUFFLE) {
+            shufflePlaylist();
+        }
+
+        // 【核心修复】遍历所有监听器进行通知
+        for (OnMusicPlayerEventListener listener : listeners) {
+            listener.onPlaylistChanged(this.musicList);
+        }
+        playMusic(currentMusicIndex);
+    }
+
+
+
 
     /**
      * 设置 Service 事件监听器
      * @param listener 监听器实例
      */
     public void setOnMusicPlayerEventListener(OnMusicPlayerEventListener listener) {
-        this.eventListener = listener;
+//        this.eventListener = listener;
     }
 
-    /**
-     * 设置播放列表和当前播放的音乐索引
-     * @param list 音乐列表
-     * @param index 当前播放的音乐索引
-     */
-    public void setPlayListAndIndex(List<MusicInfo> list, int index) {
-        if (list == null || list.isEmpty()) {
-            Log.e(TAG, "设置播放列表失败：列表为空");
-            return;
-        }
-        this.musicList = list;
-        this.currentMusicIndex = index;
-        // 初始化原始索引列表
-        originalIndexes = new ArrayList<>();
-        for (int i = 0; i < musicList.size(); i++) {
-            originalIndexes.add(i);
-        }
-        // 如果是随机模式，需要初始化随机索引列表
-        if (currentLoopMode == LoopMode.SHUFFLE) {
-            shufflePlaylist();
-        }
 
-        Log.d(TAG, "设置播放列表，大小: " + musicList.size() + ", 初始索引: " + index);
-        playMusic(currentMusicIndex); // 立即播放当前选中的音乐
-    }
+
 
     /**
      * 播放指定索引的音乐
      * @param index 音乐在列表中的索引 (原始列表索引)
      */
     private void playMusic(int index) {
+
         if (musicList == null || musicList.isEmpty() || index < 0 || index >= musicList.size()) {
-            Log.e(TAG, "播放列表为空或索引无效");
-            if (eventListener != null) {
-                eventListener.onMusicError("播放列表为空或索引无效");
+            for (OnMusicPlayerEventListener listener : listeners) {
+                listener.onMusicError("播放列表为空或索引无效");
             }
             return;
         }
+
 
         currentMusicIndex = index; // 更新当前播放的原始索引
 
@@ -228,7 +264,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
                 currentShuffledIndex = shuffledIndexes.indexOf(currentMusicIndex);
                 if (currentShuffledIndex == -1) { // 仍然没找到，说明逻辑有问题或者列表为空
                     Log.e(TAG, "随机列表未包含当前音乐索引，无法播放");
-                    if (eventListener != null) eventListener.onMusicError("随机播放列表异常");
+//                    if (eventListener != null) eventListener.onMusicError("随机播放列表异常");
                     return;
                 }
             }
@@ -236,43 +272,26 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
 
 
         MusicInfo musicToPlay = musicList.get(currentMusicIndex);
-        Log.d(TAG, "准备播放音乐: " + musicToPlay.getMusicName() + " - " + musicToPlay.getAuthor() + ", URL: " + musicToPlay.getMusicUrl());
 
         try {
-            if (mediaPlayer == null) {
-                mediaPlayer = new MediaPlayer();
-                mediaPlayer.setOnCompletionListener(this);
-                mediaPlayer.setOnErrorListener(this);
-            } else {
-                mediaPlayer.reset(); // 重置播放器，准备新的播放
-            }
-
-            mediaPlayer.setDataSource(musicToPlay.getMusicUrl()); // 设置音乐源
-            mediaPlayer.prepareAsync(); // 异步准备
+            mediaPlayer.reset();
+            mediaPlayer.setDataSource(musicToPlay.getMusicUrl());
+            mediaPlayer.prepareAsync();
             mediaPlayer.setOnPreparedListener(mp -> {
-                mp.start(); // 准备完成后开始播放
-                Log.d(TAG, "音乐开始播放: " + musicToPlay.getMusicName());
-                updateNotification(musicToPlay, true); // 更新通知栏为播放状态
-                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING); // 更新 MediaSession 状态
-
-                if (eventListener != null) {
-                    eventListener.onMusicPrepared(musicToPlay); // 通知 Activity 音乐已准备好
+                mp.start();
+                updateNotification(musicToPlay, true);
+                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
+                // 【核心修复】遍历所有监听器进行通知
+                for (OnMusicPlayerEventListener listener : listeners) {
+                    listener.onMusicPrepared(musicToPlay);
                 }
             });
-        } catch (IOException e) {
-            Log.e(TAG, "设置数据源或准备播放器失败: " + e.getMessage());
-            Toast.makeText(this, "播放失败: " + musicToPlay.getMusicName(), Toast.LENGTH_SHORT).show();
-            if (eventListener != null) {
-                eventListener.onMusicError("播放失败: " + e.getMessage());
+        } catch (IOException | IllegalStateException e) {
+            // 【核心修复】遍历所有监听器进行通知
+            for (OnMusicPlayerEventListener listener : listeners) {
+                listener.onMusicError("播放失败: " + e.getMessage());
             }
-            // 尝试播放下一首
-            playNext(); // 避免卡死
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "MediaPlayer 状态错误: " + e.getMessage());
-            if (eventListener != null) {
-                eventListener.onMusicError("播放器状态异常: " + e.getMessage());
-            }
-            playNext(); // 尝试播放下一首
+            playNext();
         }
     }
 
@@ -280,34 +299,29 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
      * 播放/暂停音乐
      */
     public void togglePlayPause() {
-        if (mediaPlayer != null) {
+        if (mediaPlayer != null && getCurrentMusic() != null) {
+            MusicInfo currentMusic = getCurrentMusic();
             if (mediaPlayer.isPlaying()) {
                 mediaPlayer.pause();
-                Log.d(TAG, "音乐暂停");
-                updateNotification(getCurrentMusic(), false); // 更新通知栏为暂停状态
-                updatePlaybackState(PlaybackStateCompat.STATE_PAUSED); // 更新 MediaSession 状态
-                if (eventListener != null) {
-                    eventListener.onMusicPlayStatusChanged(false); // 通知 Activity 播放状态改变
+                updateNotification(currentMusic, false);
+                updatePlaybackState(PlaybackStateCompat.STATE_PAUSED);
+                // 【核心修复】遍历所有监听器进行通知
+                for (OnMusicPlayerEventListener listener : listeners) {
+                    listener.onMusicPlayStatusChanged(false, currentMusic);
                 }
             } else {
                 mediaPlayer.start();
-                Log.d(TAG, "音乐继续播放");
-                updateNotification(getCurrentMusic(), true); // 更新通知栏为播放状态
-                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING); // 更新 MediaSession 状态
-                if (eventListener != null) {
-                    eventListener.onMusicPlayStatusChanged(true); // 通知 Activity 播放状态改变
+                updateNotification(currentMusic, true);
+                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING);
+                // 【核心修复】遍历所有监听器进行通知
+                for (OnMusicPlayerEventListener listener : listeners) {
+                    listener.onMusicPlayStatusChanged(true, currentMusic);
                 }
-            }
-        } else {
-            // 如果 MediaPlayer 未初始化或未播放，尝试播放当前音乐
-            if (musicList != null && !musicList.isEmpty()) {
-                playMusic(currentMusicIndex);
-            } else {
-                Log.w(TAG, "无法播放/暂停，MediaPlayer为空且无播放列表");
-                Toast.makeText(this, "无音乐可播放", Toast.LENGTH_SHORT).show();
             }
         }
     }
+
+
 
     /**
      * 播放上一首音乐
@@ -391,9 +405,16 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
                 break;
         }
         Log.d(TAG, "切换到播放模式: " + currentLoopMode);
-        if (eventListener != null) {
-            eventListener.onLoopModeChanged(currentLoopMode); // 通知 Activity 模式改变
+
+
+
+
+
+        // 【核心修复】遍历所有监听器进行通知
+        for (OnMusicPlayerEventListener listener : listeners) {
+            listener.onLoopModeChanged(currentLoopMode);
         }
+
     }
 
     /**
@@ -510,9 +531,15 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
                 playNext(); // 随机模式下，也调用 playNext
                 break;
         }
-        if (eventListener != null) {
-            eventListener.onMusicCompleted(getCurrentMusic()); // 通知 Activity 播放完成，并传递下一首音乐信息
+
+
+        // 【核心修复】遍历所有监听器进行通知
+        for (OnMusicPlayerEventListener listener : listeners) {
+            listener.onLoopModeChanged(currentLoopMode);
         }
+
+
+
     }
 
     // --- MediaPlayer.OnErrorListener 回调 ---
@@ -523,9 +550,14 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
         mp.reset();
         String errorMessage = "播放出错，错误码: " + what;
         Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
-        if (eventListener != null) {
-            eventListener.onMusicError(errorMessage);
+
+
+        // 【核心修复】遍历所有监听器进行通知
+        for (OnMusicPlayerEventListener listener : listeners) {
+            listener.onMusicError(errorMessage);
         }
+
+
         playNext(); // 尝试播放下一首
         return true; // 表示已处理错误
     }

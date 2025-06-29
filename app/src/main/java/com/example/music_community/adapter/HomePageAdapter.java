@@ -23,6 +23,10 @@ import java.util.HashMap; // 导入 HashMap
 import java.util.List;
 import java.util.Map; // 导入 Map
 
+import com.example.music_community.adapter.MusicItemAdapter; // 确保导入
+
+
+
 public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, BaseViewHolder> {
 
     // Handler 用于实现 Banner 自动轮播
@@ -31,8 +35,15 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
     private Map<RecyclerView.ViewHolder, Runnable> bannerAutoScrollRunnables = new HashMap<>();
     private static final long BANNER_AUTO_SCROLL_DELAY = 3000; // 自动轮播间隔 3 秒 (3000毫秒)
 
-    public HomePageAdapter(List<HomePageInfo> data) {
+
+    private MusicItemAdapter.OnMusicItemPlayListener playListener; // 【新增】
+
+
+
+    // 【修改】构造函数，增加监听器参数
+    public HomePageAdapter(List<HomePageInfo> data, MusicItemAdapter.OnMusicItemPlayListener listener) {
         super(data);
+        this.playListener = listener;
 
         // 注册多类型布局及其对应的布局文件
         addItemType(1, R.layout.item_home_page_banner); // Style 1: banner
@@ -118,8 +129,8 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
 
                 recyclerViewHorizontalCard.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
 
-                // 调用 MusicItemAdapter 新的构造函数，传入布局ID
-                MusicItemAdapter horizontalCardAdapter = new MusicItemAdapter(R.layout.item_music_info_large, item.getMusicInfoList());
+                // 【修改】创建 Adapter 时传入 listener
+                MusicItemAdapter horizontalCardAdapter = new MusicItemAdapter(R.layout.item_music_info_large, item.getMusicInfoList(), playListener);
                 recyclerViewHorizontalCard.setAdapter(horizontalCardAdapter);
                 break;
 
@@ -132,7 +143,9 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
 
                 // **修改：每日推荐改为横向滑动，并使用新的矮长布局**
                 recyclerViewOneColumn.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
-                MusicItemAdapter oneColumnAdapter = new MusicItemAdapter(R.layout.item_music_info_tall_narrow, item.getMusicInfoList()); // **使用新的布局**
+
+                // 【修改】创建 Adapter 时传入 listener
+                MusicItemAdapter oneColumnAdapter = new MusicItemAdapter(R.layout.item_music_info_tall_narrow, item.getMusicInfoList(), playListener);
                 recyclerViewOneColumn.setAdapter(oneColumnAdapter);
                 break;
 
@@ -145,7 +158,9 @@ public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, Bas
 
                 // **修改：热门金曲使用新的正方形布局**
                 recyclerViewTwoColumns.setLayoutManager(new GridLayoutManager(getContext(), 2)); // 两列网格布局
-                MusicItemAdapter twoColumnsAdapter = new MusicItemAdapter(R.layout.item_music_info_square, item.getMusicInfoList()); // **使用新的布局**
+
+                // 【修改】创建 Adapter 时传入 listener
+                MusicItemAdapter twoColumnsAdapter = new MusicItemAdapter(R.layout.item_music_info_square, item.getMusicInfoList(), playListener);
                 recyclerViewTwoColumns.setAdapter(twoColumnsAdapter);
                 break;
         }

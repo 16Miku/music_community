@@ -47,11 +47,14 @@ import java.util.Locale;
 public class MusicPlayerActivity extends AppCompatActivity implements MusicPlaybackFragmentListener {
 
     private static final String TAG = "MusicPlayerActivity";
-    public static final String EXTRA_MUSIC_LIST = "extra_music_list";
-    public static final String EXTRA_CURRENT_POSITION = "extra_current_position";
 
-    private List<MusicInfo> musicList;
-    private int currentPlayPosition;
+    // 【移除】不再需要 Intent Extras
+    // public static final String EXTRA_MUSIC_LIST = "extra_music_list";
+    // public static final String EXTRA_CURRENT_POSITION = "extra_current_position";
+
+    // 【移除】不再需要从 Intent 获取数据
+    // private List<MusicInfo> musicList;
+    // private int currentPlayPosition;
 
     // UI 控件
     private ImageView ivClosePlayer;
@@ -88,6 +91,10 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
     private Boolean pendingIsPlaying;
 
 
+    // 【新增】Service 的监听器引用
+    private MusicPlayerService.OnMusicPlayerEventListener musicPlayerListener;
+
+
     // 用于绑定 Service 的 ServiceConnection
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -97,91 +104,30 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
             musicPlayerService = binder.getService();
             isServiceBound = true;
 
-            musicPlayerService.setPlayListAndIndex(musicList, currentPlayPosition);
+            // 【修改】不再设置播放列表，而是添加监听器
+            musicPlayerService.addOnMusicPlayerEventListener(musicPlayerListener);
 
-            musicPlayerService.setOnMusicPlayerEventListener(new MusicPlayerService.OnMusicPlayerEventListener() {
-                @Override
-                public void onMusicPrepared(MusicInfo musicInfo) {
-                    Log.d(TAG, "onMusicPrepared: Music prepared: " + musicInfo.getMusicName());
-
-                    // 【核心修复】在更新适配器数据之前，先将 ViewPager2 切换到封面页 (position 0)
-                    // 这样可以避免在适配器刷新时，ViewPager2 处于不确定状态而导致页面错乱。
-                    if (viewPagerPlayer.getCurrentItem() != 0) {
-                        viewPagerPlayer.setCurrentItem(0, false); // false 表示不平滑滚动，立即切换
-                        Log.d(TAG, "onMusicPrepared: Switched ViewPager2 to page 0 before updating adapter.");
-                    }
-
-                    updateMusicInfoUI(musicInfo); // 更新歌曲信息 UI
-                    updatePlayPauseButton(); // 更新播放按钮状态
-
-                    // 更新待处理状态并尝试同步
-                    pendingMusicInfo = musicInfo;
-                    pendingIsPlaying = true; // 音乐准备好，表示将开始播放
-                    syncFragmentState(); // 尝试立即同步状态
-
-                    startUpdatingSeekBar(); // 启动进度条更新
+            // 【修改】连接后立即用 Service 的当前状态更新 UI
+            MusicInfo currentMusic = musicPlayerService.getCurrentMusic();
+            if (currentMusic != null) {
+                // 立即切换到封面页，防止页面状态不一致
+                if (viewPagerPlayer.getCurrentItem() != 0) {
+                    viewPagerPlayer.setCurrentItem(0, false);
                 }
-
-                @Override
-                public void onMusicPlayStatusChanged(boolean isPlaying) {
-                    Log.d(TAG, "onMusicPlayStatusChanged: isPlaying = " + isPlaying);
-                    updatePlayPauseButton();
-
-                    // 更新待处理状态并尝试同步
-                    pendingMusicInfo = musicPlayerService.getCurrentMusic(); // 获取当前音乐
-                    pendingIsPlaying = isPlaying; // 更新播放状态
-                    syncFragmentState(); // 尝试立即同步状态
-                }
-
-                @Override
-                public void onMusicCompleted(MusicInfo nextMusicInfo) {
-                    Log.d(TAG, "onMusicCompleted: Music completed, next: " + (nextMusicInfo != null ? nextMusicInfo.getMusicName() : "null"));
-
-                    // 【核心修复】在更新适配器数据之前，先将 ViewPager2 切换到封面页 (position 0)
-                    if (viewPagerPlayer.getCurrentItem() != 0) {
-                        viewPagerPlayer.setCurrentItem(0, false); // false 表示不平滑滚动，立即切换
-                        Log.d(TAG, "onMusicCompleted: Switched ViewPager2 to page 0 before updating adapter.");
-                    }
-
-                    updateMusicInfoUI(nextMusicInfo); // 更新下一首歌曲信息 UI
-                    updatePlayPauseButton(); // 更新播放按钮状态
-
-                    // 更新待处理状态并尝试同步
-                    pendingMusicInfo = nextMusicInfo;
-                    pendingIsPlaying = true; // 下一首歌曲默认开始播放
-                    syncFragmentState(); // 尝试立即同步状态
-                }
-
-                @Override
-                public void onMusicError(String errorMessage) {
-                    Toast.makeText(MusicPlayerActivity.this, "播放出错: " + errorMessage, Toast.LENGTH_SHORT).show();
-
-                    // 更新待处理状态并尝试同步
-                    pendingMusicInfo = musicPlayerService.getCurrentMusic();
-                    pendingIsPlaying = false; // 播放出错，动画应停止
-                    syncFragmentState(); // 尝试立即同步状态
-                }
-
-                @Override
-                public void onLoopModeChanged(MusicPlayerService.LoopMode newMode) {
-                    updateLoopModeIcon(newMode);
-                    showLoopModeToast(newMode);
-                }
-            });
-
-            // 初始启动时设置待处理状态
-            if (musicPlayerService.getCurrentMusic() != null) {
-                updateMusicInfoUI(musicPlayerService.getCurrentMusic());
+                updateMusicInfoUI(currentMusic);
                 updatePlayPauseButton();
                 updateLoopModeIcon(musicPlayerService.getLoopMode());
-                pendingMusicInfo = musicPlayerService.getCurrentMusic();
+                startUpdatingSeekBar();
+
+                // 同步 Fragment 状态
+                pendingMusicInfo = currentMusic;
                 pendingIsPlaying = musicPlayerService.isPlaying();
+                syncFragmentState();
             } else {
-                Log.d(TAG, "Service not playing and no current music, UI will be updated when music starts.");
-                pendingMusicInfo = null;
-                pendingIsPlaying = null;
+                // 如果服务没有音乐，可以关闭页面或显示提示
+                Toast.makeText(MusicPlayerActivity.this, "当前无播放歌曲", Toast.LENGTH_SHORT).show();
+                finish();
             }
-            syncFragmentState();
         }
 
         @Override
@@ -219,7 +165,8 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         Log.d(TAG, "onCreate: Activity created.");
 
         initViews();
-        getIntentData();
+        // 【移除】getIntentData();
+        initMusicPlayerListener(); // 【新增】
         setupListeners();
         initViewPager();
 
@@ -228,14 +175,87 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
+
+
+    // 【新增】初始化服务监听器
+    private void initMusicPlayerListener() {
+        musicPlayerListener = new MusicPlayerService.OnMusicPlayerEventListener() {
+            @Override
+            public void onMusicPrepared(MusicInfo musicInfo) {
+                if (viewPagerPlayer.getCurrentItem() != 0) {
+                    viewPagerPlayer.setCurrentItem(0, false);
+                }
+                updateMusicInfoUI(musicInfo);
+                updatePlayPauseButton();
+                startUpdatingSeekBar();
+                pendingMusicInfo = musicInfo;
+                pendingIsPlaying = true;
+                syncFragmentState();
+            }
+
+            @Override
+            public void onMusicPlayStatusChanged(boolean isPlaying, MusicInfo musicInfo) {
+                updatePlayPauseButton();
+                pendingMusicInfo = musicInfo;
+                pendingIsPlaying = isPlaying;
+                syncFragmentState();
+            }
+
+            @Override
+            public void onMusicCompleted(MusicInfo nextMusicInfo) {
+                if (viewPagerPlayer.getCurrentItem() != 0) {
+                    viewPagerPlayer.setCurrentItem(0, false);
+                }
+                updateMusicInfoUI(nextMusicInfo);
+                updatePlayPauseButton();
+                pendingMusicInfo = nextMusicInfo;
+                pendingIsPlaying = true;
+                syncFragmentState();
+            }
+
+
+
+
+
+
+
+            @Override
+            public void onMusicError(String errorMessage) {
+                Toast.makeText(MusicPlayerActivity.this, "播放出错: " + errorMessage, Toast.LENGTH_SHORT).show();
+
+                // 更新待处理状态并尝试同步
+                pendingMusicInfo = musicPlayerService.getCurrentMusic();
+                pendingIsPlaying = false; // 播放出错，动画应停止
+                syncFragmentState(); // 尝试立即同步状态
+            }
+
+            @Override
+            public void onLoopModeChanged(MusicPlayerService.LoopMode newMode) {
+                updateLoopModeIcon(newMode);
+                showLoopModeToast(newMode);
+            }
+
+            @Override
+            public void onPlaylistChanged(List<MusicInfo> newPlaylist) {
+
+            }
+
+
+        };
+    }
+
+
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "MusicPlayerActivity onDestroy");
         if (isServiceBound) {
+            musicPlayerService.removeOnMusicPlayerEventListener(musicPlayerListener); // 【修改】移除监听器
             unbindService(serviceConnection);
             isServiceBound = false;
         }
+
         stopUpdatingSeekBar();
 
         if (musicPlaybackFragmentInstance != null) {
@@ -247,6 +267,17 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
             viewPagerPlayer.unregisterOnPageChangeCallback(pageChangeCallback);
         }
     }
+
+
+
+    // 【修改】重写 finish 方法以应用退出动画
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(R.anim.slide_in_down, R.anim.slide_out_down);
+    }
+
+
 
     /**
      * 初始化所有 UI 控件
@@ -269,21 +300,21 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         musicPlayerRootLayout = findViewById(R.id.music_player_root_layout);
     }
 
-    /**
-     * 获取从上一个 Activity 传递过来的数据
-     */
-    private void getIntentData() {
-        if (getIntent() != null) {
-            musicList = (List<MusicInfo>) getIntent().getSerializableExtra(EXTRA_MUSIC_LIST);
-            currentPlayPosition = getIntent().getIntExtra(EXTRA_CURRENT_POSITION, 0);
-
-            if (musicList == null) {
-                musicList = new ArrayList<>();
-                Log.e(TAG, "传递的音乐列表为空！");
-            }
-            Log.d(TAG, "接收到音乐列表大小: " + musicList.size() + ", 初始播放位置: " + currentPlayPosition);
-        }
-    }
+//    /**
+//     * 获取从上一个 Activity 传递过来的数据
+//     */
+//    private void getIntentData() {
+//        if (getIntent() != null) {
+//            musicList = (List<MusicInfo>) getIntent().getSerializableExtra(EXTRA_MUSIC_LIST);
+//            currentPlayPosition = getIntent().getIntExtra(EXTRA_CURRENT_POSITION, 0);
+//
+//            if (musicList == null) {
+//                musicList = new ArrayList<>();
+//                Log.e(TAG, "传递的音乐列表为空！");
+//            }
+//            Log.d(TAG, "接收到音乐列表大小: " + musicList.size() + ", 初始播放位置: " + currentPlayPosition);
+//        }
+//    }
 
     /**
      * 初始化 ViewPager2
@@ -349,7 +380,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
 
         ivSongList.setOnClickListener(v -> {
             Toast.makeText(this, "显示歌曲列表 ", Toast.LENGTH_SHORT).show();
-            showSongListDialog();
+//            showSongListDialog();
         });
 
         seekBarMusic.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -375,36 +406,36 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         });
     }
 
-    /**
-     * 显示歌曲列表对话框
-     */
-    private void showSongListDialog() {
-        if (musicList == null || musicList.isEmpty()) {
-            Toast.makeText(this, "播放列表为空", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        StringBuilder songListBuilder = new StringBuilder();
-        for (int i = 0; i < musicList.size(); i++) {
-            MusicInfo song = musicList.get(i);
-            songListBuilder.append(i + 1)
-                    .append(". ")
-                    .append(song.getMusicName())
-                    .append(" - ")
-                    .append(song.getAuthor());
-            if (musicPlayerService != null && musicPlayerService.getCurrentMusic() != null &&
-                    musicPlayerService.getCurrentMusic().equals(song)) {
-                songListBuilder.append(" (当前播放)");
-            }
-            songListBuilder.append("\n");
-        }
-
-        new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("当前播放列表")
-                .setMessage(songListBuilder.toString())
-                .setPositiveButton("确定", null)
-                .show();
-    }
+//    /**
+//     * 显示歌曲列表对话框
+//     */
+//    private void showSongListDialog() {
+//        if (musicList == null || musicList.isEmpty()) {
+//            Toast.makeText(this, "播放列表为空", Toast.LENGTH_SHORT).show();
+//            return;
+//        }
+//
+//        StringBuilder songListBuilder = new StringBuilder();
+//        for (int i = 0; i < musicList.size(); i++) {
+//            MusicInfo song = musicList.get(i);
+//            songListBuilder.append(i + 1)
+//                    .append(". ")
+//                    .append(song.getMusicName())
+//                    .append(" - ")
+//                    .append(song.getAuthor());
+//            if (musicPlayerService != null && musicPlayerService.getCurrentMusic() != null &&
+//                    musicPlayerService.getCurrentMusic().equals(song)) {
+//                songListBuilder.append(" (当前播放)");
+//            }
+//            songListBuilder.append("\n");
+//        }
+//
+//        new androidx.appcompat.app.AlertDialog.Builder(this)
+//                .setTitle("当前播放列表")
+//                .setMessage(songListBuilder.toString())
+//                .setPositiveButton("确定", null)
+//                .show();
+//    }
 
     /**
      * 更新播放/暂停按钮的图标

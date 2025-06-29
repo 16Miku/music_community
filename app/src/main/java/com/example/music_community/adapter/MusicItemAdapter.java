@@ -8,111 +8,63 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
-import com.chad.library.adapter.base.BaseQuickAdapter;
-import com.chad.library.adapter.base.listener.OnItemClickListener;
-import com.chad.library.adapter.base.viewholder.BaseViewHolder;
 import com.bumptech.glide.Glide;
-import com.example.music_community.MusicPlayerActivity;
+import com.chad.library.adapter.base.BaseQuickAdapter;
+import com.chad.library.adapter.base.viewholder.BaseViewHolder;
 import com.example.music_community.R;
 import com.example.music_community.model.MusicInfo;
 
-import java.io.Serializable;
 import java.util.List;
 
 public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder> {
 
-    private int currentLayoutResId;
+    private final int currentLayoutResId;
+    private final OnMusicItemPlayListener playListener; // 【新增】
+
+    // 【新增】监听器接口
+    public interface OnMusicItemPlayListener {
+        void onPlayMusic(List<MusicInfo> musicList, int position);
+    }
 
     /**
-     * 构造函数
-     * @param layoutResId 当前 MusicItemAdapter 实例要使用的布局资源ID
-     * @param data 音乐信息列表
+     * 【修改】构造函数，接收播放监听器
+     * @param layoutResId 布局ID
+     * @param data 数据
+     * @param listener 播放监听器
      */
-    public MusicItemAdapter(int layoutResId, List<MusicInfo> data) {
+    public MusicItemAdapter(int layoutResId, List<MusicInfo> data, OnMusicItemPlayListener listener) {
         super(layoutResId, data);
         this.currentLayoutResId = layoutResId;
+        this.playListener = listener;
 
-        // 设置 Item 点击监听器
-        setOnItemClickListener(new OnItemClickListener() {
-            @Override
-            public void onItemClick(@NonNull BaseQuickAdapter<?, ?> adapter, @NonNull View view, int position) {
-                MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
-                if (clickedItem != null) {
-//                    Toast.makeText(view.getContext(), "点击了音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
-
-                    // 启动 MusicPlayerActivity 并传递数据
-                    Intent intent = new Intent( view.getContext(), MusicPlayerActivity.class );
-
-                    // 传递整个音乐列表
-                    intent.putExtra( MusicPlayerActivity.EXTRA_MUSIC_LIST, (Serializable) getData() );
-
-                    // 传递当前点击的音乐在列表中的索引
-                    intent.putExtra( MusicPlayerActivity.EXTRA_CURRENT_POSITION, position  );
-
-                    view.getContext().startActivity( intent );
-
-                }
+        // 【核心修改】整个 item 的点击事件
+        setOnItemClickListener((adapter, view, position) -> {
+            if (playListener != null) {
+                // 通知 MainActivity 播放音乐
+                playListener.onPlayMusic(getData(), position);
             }
         });
 
-        // 根据传入的布局ID判断是否需要注册子视图的点击事件
-        if (currentLayoutResId == R.layout.item_music_info_small) {
-            addChildClickViewIds(R.id.iv_add_music); // 注册加号按钮的点击事件
-            setOnItemChildClickListener((adapter, view, position) -> {
-                if (view.getId() == R.id.iv_add_music) {
-                    MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
-                    if (clickedItem != null) {
-                        Toast.makeText(view.getContext(), "将音乐 " + clickedItem.getMusicName() + " 添加到音乐列表", Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-        } else if (currentLayoutResId == R.layout.item_music_info_large) {
-            addChildClickViewIds(R.id.iv_play_button_large); // 注册大卡片播放按钮的点击事件
-            setOnItemChildClickListener((adapter, view, position) -> {
-                if (view.getId() == R.id.iv_play_button_large) {
-                    MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
-                    if (clickedItem != null) {
-//                        Toast.makeText(view.getContext(), "播放音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
-
-
-                        // 启动 MusicPlayerActivity 并传递数据
-                        Intent intent = new Intent(view.getContext(), MusicPlayerActivity.class);
-
-                        intent.putExtra(MusicPlayerActivity.EXTRA_MUSIC_LIST, (Serializable) getData());
-
-                        intent.putExtra(MusicPlayerActivity.EXTRA_CURRENT_POSITION, position);
-
-                        view.getContext().startActivity(intent);
-
-
-
-                    }
-                }
-            });
+        // 子 view 的点击事件也统一为播放音乐
+        if (currentLayoutResId == R.layout.item_music_info_large) {
+            addChildClickViewIds(R.id.iv_play_button_large);
         } else if (currentLayoutResId == R.layout.item_music_info_square) {
-            addChildClickViewIds(R.id.iv_play_button_square); // 注册正方形卡片播放按钮的点击事件
-            setOnItemChildClickListener((adapter, view, position) -> {
-                if (view.getId() == R.id.iv_play_button_square) {
-                    MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
-                    if (clickedItem != null) {
-//                        Toast.makeText(view.getContext(), "播放音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
-
-
-                        // 启动 MusicPlayerActivity 并传递数据
-                        Intent intent = new Intent(view.getContext(), MusicPlayerActivity.class);
-
-                        intent.putExtra(MusicPlayerActivity.EXTRA_MUSIC_LIST, (Serializable) getData());
-
-                        intent.putExtra(MusicPlayerActivity.EXTRA_CURRENT_POSITION, position);
-
-                        view.getContext().startActivity(intent);
-
-
-                    }
-                }
-            });
+            addChildClickViewIds(R.id.iv_play_button_square);
+        } else if (currentLayoutResId == R.layout.item_music_info_small) {
+            addChildClickViewIds(R.id.iv_add_music);
         }
-        // item_music_info_tall_narrow 暂时没有特殊子视图点击事件，如果有需要可以添加
+
+        setOnItemChildClickListener((adapter, view, position) -> {
+            if (view.getId() == R.id.iv_add_music) {
+                // TODO: 实现添加到播放列表的逻辑
+                Toast.makeText(getContext(), "添加功能待开发", Toast.LENGTH_SHORT).show();
+            } else {
+                // 其他按钮（如播放按钮）也触发播放
+                if (playListener != null) {
+                    playListener.onPlayMusic(getData(), position);
+                }
+            }
+        });
     }
 
     @Override
