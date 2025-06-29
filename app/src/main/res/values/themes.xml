@@ -37,7 +37,7 @@
     <!-- 【新增】音乐播放页主题样式，全屏且无状态栏/导航栏 -->
     <style name="Theme.Music_community.FullScreenPlayer" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- 隐藏状态栏 -->
-        <item name="android:windowFullscreen">true</item>
+<!--        <item name="android:windowFullscreen">true</item>-->
         <!-- 隐藏导航栏 (如果需要) -->
         <item name="android:windowTranslucentNavigation">true</item>
         <!-- 设置状态栏颜色为透明，让内容延伸到状态栏 -->

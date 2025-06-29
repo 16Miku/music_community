@@ -1,135 +1,114 @@
 package com.example.music_community;
 
-import android.annotation.SuppressLint;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
+import android.app.Notification; // 导入 Notification
+import android.app.NotificationChannel; // 导入 NotificationChannel
+import android.app.NotificationManager; // 导入 NotificationManager
+import android.app.PendingIntent; // 导入 PendingIntent
 import android.app.Service;
-import android.content.Context;
+import android.content.Context; // 导入 Context
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.drawable.Drawable;
+import android.graphics.drawable.Drawable; // 导入 Drawable 类，用于 Glide Target 接口
 import android.media.MediaPlayer;
 import android.os.Binder;
-import android.os.Build;
+import android.os.Build; // 导入 Build
 import android.os.IBinder;
-import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.MediaSessionCompat; // 导入 MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat; // 导入 PlaybackStateCompat
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationCompat; // 导入 NotificationCompat
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.target.CustomTarget;
-import com.bumptech.glide.request.transition.Transition;
+import com.bumptech.glide.Glide; // 导入 Glide
+import com.bumptech.glide.request.Request;
+import com.bumptech.glide.request.target.SizeReadyCallback; // 【新增】导入 SizeReadyCallback
+import com.bumptech.glide.request.target.Target; // 导入 Glide Target 接口
+import com.bumptech.glide.request.transition.Transition; // 导入 Glide Transition 类
 import com.example.music_community.model.MusicInfo;
 
 import java.io.IOException;
+import java.util.ArrayList; // 导入 ArrayList
+import java.util.Collections; // 导入 Collections
 import java.util.List;
+import java.util.Random; // 导入 Random
 
 public class MusicPlayerService extends Service implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
 
-
-
-    // 通知相关常量
-    public static final String CHANNEL_ID = "music_player_channel"; // 通知渠道ID，唯一标识
-    public static final int NOTIFICATION_ID = 1; // 通知ID，唯一标识
-    public static final String ACTION_PLAY_PAUSE = com.example.music_community" | Set-Content -Path replacements.txt.ACTION_PLAY_PAUSE"; // 播放/暂停动作
-    public static final String ACTION_PREVIOUS = com.example.music_community" | Set-Content -Path replacements.txt.ACTION_PREVIOUS"; // 上一首动作
-    public static final String ACTION_NEXT = com.example.music_community" | Set-Content -Path replacements.txt.ACTION_NEXT"; // 下一首动作
-    public static final String ACTION_CLOSE = com.example.music_community" | Set-Content -Path replacements.txt.ACTION_CLOSE"; // 关闭动作
-
-
-
     private static final String TAG = "MusicPlayerService";
+    private static final int NOTIFICATION_ID = 101; // 通知ID
+    private static final String CHANNEL_ID = "music_player_channel"; // 通知渠道ID
+    private static final String CHANNEL_NAME = "音乐播放"; // 通知渠道名称
 
-    private MediaPlayer mediaPlayer; // 媒体播放器实例
-    private List<MusicInfo> musicList; // 播放列表
-    private int currentMusicIndex = -1; // 当前播放音乐的索引
+    private MediaPlayer mediaPlayer;
+    private List<MusicInfo> musicList;
+    private int currentMusicIndex = -1;
 
-    private final IBinder binder = new MusicPlayerBinder(); // Binder 用于 Activity 与 Service 通信
+    // 播放模式枚举
+    public enum LoopMode {
+        SEQUENCE, // 顺序播放
+        SINGLE,   // 单曲循环
+        SHUFFLE   // 随机播放
+    }
+    private LoopMode currentLoopMode = LoopMode.SEQUENCE; // 默认顺序播放
 
+    // 用于随机播放的原始索引列表和随机索引列表
+    private List<Integer> originalIndexes;
+    private List<Integer> shuffledIndexes;
+    private int currentShuffledIndex = -1; // 在随机模式下，当前播放的在 shuffledIndexes 中的索引
 
-    // 通知管理器
-    private NotificationManager notificationManager;
+    // Service 事件监听器接口
+    public interface OnMusicPlayerEventListener {
+        void onMusicPrepared(MusicInfo musicInfo); // 音乐准备好播放
+        void onMusicPlayStatusChanged(boolean isPlaying); // 播放状态改变
+        void onMusicCompleted(MusicInfo nextMusicInfo); // 音乐播放完成
+        void onMusicError(String errorMessage); // 播放出错
+        void onLoopModeChanged(LoopMode newMode); // 播放模式改变
+    }
 
+    private OnMusicPlayerEventListener eventListener; // 事件监听器实例
 
-    // MediaSessionCompat 用于通知栏和锁屏控制
+    // MediaSessionCompat 用于通知栏媒体控制
     private MediaSessionCompat mediaSession;
+    private PlaybackStateCompat.Builder playbackStateBuilder;
 
-
+    private final IBinder binder = new MusicPlayerBinder();
 
     public class MusicPlayerBinder extends Binder {
         public MusicPlayerService getService() {
-            return MusicPlayerService.this; // 返回 Service 实例
+            return MusicPlayerService.this;
         }
     }
 
     @Override
     public void onCreate() {
+
         super.onCreate();
         Log.d(TAG, "MusicPlayerService onCreate");
-
-
-        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE );
-
-        // 创建通知渠道
-        createNotificationChannel();
-
-
-
-
-
-
         mediaPlayer = new MediaPlayer();
-        mediaPlayer.setOnCompletionListener(this); // 设置播放完成监听器
-        mediaPlayer.setOnErrorListener(this); // 设置播放错误监听器
-
-
+        mediaPlayer.setOnCompletionListener(this);
+        mediaPlayer.setOnErrorListener(this);
 
         // 初始化 MediaSession
-        mediaSession = new MediaSessionCompat(this, TAG);
-
-        // 设置 MediaSession 的 flags，使其能够处理媒体按钮和传输控制
+        mediaSession = new MediaSessionCompat(this, "MusicPlayerService");
         mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        mediaSession.setCallback(new MediaSessionCallback());
+        mediaSession.setActive(true);
 
+        // 初始化 PlaybackStateCompat.Builder
+        playbackStateBuilder = new PlaybackStateCompat.Builder()
+                .setActions(
+                        PlaybackStateCompat.ACTION_PLAY |
+                                PlaybackStateCompat.ACTION_PAUSE |
+                                PlaybackStateCompat.ACTION_PLAY_PAUSE |
+                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
+                                PlaybackStateCompat.ACTION_SEEK_TO
+                );
 
-        mediaSession.setCallback(new MediaSessionCompat.Callback() {
-            @Override
-            public void onPlay() {
-                super.onPlay();
-                togglePlayPause(); // 媒体会话收到播放指令，调用播放/暂停
-            }
-
-            @Override
-            public void onPause() {
-                super.onPause();
-                togglePlayPause(); // 媒体会话收到暂停指令，调用播放/暂停
-            }
-
-            @Override
-            public void onSkipToNext() {
-                super.onSkipToNext();
-                playNext(); // 媒体会话收到下一首指令
-            }
-
-            @Override
-            public void onSkipToPrevious() {
-                super.onSkipToPrevious();
-                playPrevious(); // 媒体会话收到上一首指令
-            }
-
-            // 可以根据需要添加其他回调，如 onSeekTo 等
-        });
-        mediaSession.setActive(true); // 激活媒体会话，使其能够接收指令并显示在通知栏/锁屏
-
-
-
-
-
+        createNotificationChannel(); // 创建通知渠道
     }
 
     @Nullable
@@ -142,248 +121,61 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
     @Override
     public boolean onUnbind(Intent intent) {
         Log.d(TAG, "MusicPlayerService onUnbind");
-
-
-        // 当所有客户端都解绑时，如果服务不是前台服务，它可能会被系统终止。
-        // 这里我们希望它保持运行，所以后面会使用 startForegroundService。
-        mediaSession.setActive(false); // 解绑时取消激活媒体会话，避免在没有 Activity 绑定时仍然占用资源
-
-
+        // 当所有客户端都解绑时，如果服务不是由 startService 启动的，则会销毁。
+        // 但我们现在是 startService + bindService，所以解绑不会销毁服务。
+        // 可以在这里移除事件监听器，避免内存泄漏
+        eventListener = null;
         return super.onUnbind(intent);
-
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
-
-
-        Log.d(TAG, "MusicPlayerService onStartCommand, Action: " + (intent != null ? intent.getAction() : "null"));
-
-
+        Log.d(TAG, "MusicPlayerService onStartCommand");
         if (intent != null) {
-
             String action = intent.getAction();
-
             if (action != null) {
-
+                // 处理来自通知栏的控制事件
                 switch (action) {
-                    case ACTION_PLAY_PAUSE:
-                        togglePlayPause(); // 处理播放/暂停通知栏点击
+                    case "ACTION_PLAY_PAUSE":
+                        togglePlayPause();
                         break;
-                    case ACTION_PREVIOUS:
-                        playPrevious(); // 处理上一首通知栏点击
+                    case "ACTION_PREVIOUS":
+                        playPrevious();
                         break;
-                    case ACTION_NEXT:
-                        playNext(); // 处理下一首通知栏点击
+                    case "ACTION_NEXT":
+                        playNext();
                         break;
-                    case ACTION_CLOSE:
-                        stopSelf(); // 停止服务，将触发 onDestroy
+                    case "ACTION_STOP":
+                        stopSelf(); // 停止服务
                         break;
-
-
                 }
-
             }
-
         }
-        // START_NOT_STICKY 表示服务被系统杀死后不会尝试重启
-        // START_STICKY 表示如果服务被系统杀死，系统会尝试重启，但不会保留 Intent
-        // START_REDELIVER_INTENT 表示如果服务被系统杀死，系统会尝试重启并重新传递最后一个 Intent
         return START_NOT_STICKY;
-
-
     }
 
     @Override
     public void onDestroy() {
-
         super.onDestroy();
-
         Log.d(TAG, "MusicPlayerService onDestroy");
-
         if (mediaPlayer != null) {
-            mediaPlayer.release(); // 释放 MediaPlayer 资源，非常重要，防止内存泄漏
+            mediaPlayer.release();
             mediaPlayer = null;
         }
-
-        // 释放 MediaSession 资源
         if (mediaSession != null) {
+            mediaSession.setActive(false);
             mediaSession.release();
         }
-
-        // 移除通知
-        notificationManager.cancel(NOTIFICATION_ID); // 移除通知栏中显示的服务通知
+        stopForeground(true); // 停止前台服务并移除通知
     }
-
-
 
     /**
-     * 【新增】创建通知渠道 (Android 8.0 Oreo 及以上版本需要)
-     * 通知渠道用于对通知进行分类和管理，用户可以单独控制每个渠道的通知设置。
+     * 设置 Service 事件监听器
+     * @param listener 监听器实例
      */
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = getString(R.string.channel_name); // 通知渠道名称
-            String description = getString(R.string.channel_description); // 通知渠道描述
-            int importance = NotificationManager.IMPORTANCE_LOW; // 重要程度，LOW 表示不弹出，但会显示在状态栏
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-            channel.setDescription(description);
-            channel.setSound(null, null); // 关闭通知声音，避免播放音乐时通知声音干扰
-            channel.enableVibration(false); // 关闭震动
-            notificationManager.createNotificationChannel(channel);
-            Log.d(TAG, "Notification Channel Created");
-        }
+    public void setOnMusicPlayerEventListener(OnMusicPlayerEventListener listener) {
+        this.eventListener = listener;
     }
-
-
-
-
-
-    /**
-     * 【新增】构建并显示通知
-     * 此方法负责创建和更新通知栏中的媒体播放通知。
-     * @param musicInfo 当前播放的音乐信息
-     * @param isPlaying 当前是否正在播放
-     */
-    @SuppressLint("ForegroundServiceType")
-    private void buildAndShowNotification(MusicInfo musicInfo, boolean isPlaying) {
-        if (musicInfo == null) {
-            Log.e(TAG, "无法构建通知：音乐信息为空");
-            stopForeground(true); // 如果音乐信息为空，停止前台服务并移除通知
-            return;
-        }
-
-        // 点击通知跳转回 MusicPlayerActivity
-        Intent notificationIntent = new Intent(this, MusicPlayerActivity.class);
-        // FLAG_ACTIVITY_CLEAR_TOP 和 FLAG_ACTIVITY_SINGLE_TOP 确保点击通知时，如果 Activity 已经在运行，则将其带到前台，而不是创建新的实例
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        // PendingIntent.FLAG_IMMUTABLE (Android 6.0+) 确保 PendingIntent 不可变，提高安全性
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
-
-        // 创建播放/暂停按钮的 PendingIntent
-        PendingIntent playPausePendingIntent = PendingIntent.getService(this, 0,
-                new Intent(this, MusicPlayerService.class).setAction(ACTION_PLAY_PAUSE),
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
-
-        // 创建上一首按钮的 PendingIntent
-        PendingIntent previousPendingIntent = PendingIntent.getService(this, 0,
-                new Intent(this, MusicPlayerService.class).setAction(ACTION_PREVIOUS),
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
-
-        // 创建下一首按钮的 PendingIntent
-        PendingIntent nextPendingIntent = PendingIntent.getService(this, 0,
-                new Intent(this, MusicPlayerService.class).setAction(ACTION_NEXT),
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
-
-        // 创建关闭按钮的 PendingIntent
-        PendingIntent closePendingIntent = PendingIntent.getService(this, 0,
-                new Intent(this, MusicPlayerService.class).setAction(ACTION_CLOSE),
-                PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0));
-
-        // 构建通知
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.ic_launcher_foreground) // 小图标，必须设置，显示在状态栏和通知抽屉中
-                .setContentTitle(musicInfo.getMusicName()) // 歌曲名称
-                .setContentText(musicInfo.getAuthor()) // 歌手名称
-                .setContentIntent(pendingIntent) // 点击通知主体时的意图
-                .setOngoing(isPlaying) // 正在播放时，通知不可滑动清除 (除非服务停止)
-                .setOnlyAlertOnce(true) // 首次显示才响铃，后续更新不响
-                .setPriority(NotificationCompat.PRIORITY_LOW) // 优先级与渠道一致
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 锁屏可见
-
-                // 添加媒体控制按钮
-                .addAction(R.drawable.ic_previous, "上一首", previousPendingIntent) // 上一首按钮
-                .addAction(isPlaying ? R.drawable.ic_pause_big : R.drawable.ic_play_big, isPlaying ? "暂停" : "播放", playPausePendingIntent) // 播放/暂停按钮
-                .addAction(R.drawable.ic_next, "下一首", nextPendingIntent) // 下一首按钮
-                .addAction(R.drawable.ic_close, "关闭", closePendingIntent) // 关闭按钮
-
-                // 使用 MediaStyle 样式，使通知看起来更像媒体播放器
-                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
-                        .setMediaSession(mediaSession.getSessionToken()) // 关联媒体会话，实现锁屏控制
-                        // 在折叠状态下显示哪些按钮，索引对应 addAction 的顺序
-                        .setShowActionsInCompactView(0, 1, 2) // 显示上一首、播放/暂停、下一首
-                        .setShowCancelButton(true) // 显示关闭按钮
-                        .setCancelButtonIntent(closePendingIntent)); // 关闭按钮的 Intent
-
-
-        // 异步加载封面图片并设置到通知
-        // 使用 Glide 加载图片到 Bitmap，然后设置给通知的 setLargeIcon
-        Glide.with(this)
-                .asBitmap() // 请求 Glide 返回 Bitmap
-                .load(musicInfo.getCoverUrl())
-                .placeholder(R.drawable.ic_launcher_foreground) // 占位图
-                .error(R.drawable.ic_launcher_foreground) // 错误图
-                .into(new CustomTarget<Bitmap>() { // 自定义 Target 来处理 Bitmap 结果
-
-
-                    @SuppressLint("ForegroundServiceType")
-                    @Override
-                    public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
-                        builder.setLargeIcon(resource); // 设置大图标 (封面图)
-
-
-                        Notification notification = builder.build();
-
-                        if (isPlaying) {
-
-
-                            startForeground(NOTIFICATION_ID, notification); // 启动前台服务
-                        } else {
-                            notificationManager.notify(NOTIFICATION_ID, notification); // 更新通知 (如果已是前台服务)
-                        }
-                        Log.d(TAG, "通知更新：封面图已加载");
-                    }
-
-                    @SuppressLint("ForegroundServiceType")
-                    @Override
-                    public void onLoadCleared(@Nullable Drawable placeholder) {
-                        // 当图片加载取消或清除时
-                        builder.setLargeIcon((Bitmap) null); // 清除大图标
-                        Notification notification = builder.build();
-                        if (isPlaying) {
-                            startForeground(NOTIFICATION_ID, notification);
-                        } else {
-                            notificationManager.notify(NOTIFICATION_ID, notification);
-                        }
-                        Log.d(TAG, "通知更新：封面图已清除");
-                    }
-
-                    @SuppressLint("ForegroundServiceType")
-                    @Override
-                    public void onLoadFailed(@Nullable Drawable errorDrawable) {
-                        super.onLoadFailed(errorDrawable);
-                        // 加载失败时也清除大图标，避免显示旧图或不合适的图
-                        builder.setLargeIcon((Bitmap) null);
-                        Notification notification = builder.build();
-                        if (isPlaying) {
-                            startForeground(NOTIFICATION_ID, notification);
-                        } else {
-                            notificationManager.notify(NOTIFICATION_ID, notification);
-                        }
-                        Log.e(TAG, "通知更新：封面图加载失败");
-                    }
-                });
-
-        // 【重要】在 Glide 异步加载完成之前，先显示一个不带大图标的通知，避免 ANR
-        // 如果不这样做，并且图片加载很慢，可能会导致 ANR。
-        if (isPlaying) {
-            startForeground(NOTIFICATION_ID, builder.build());
-        } else {
-            // 如果已经处于暂停状态，并且服务之前是前台服务，则将其降级为普通通知
-            // 如果服务不是前台服务，则只是更新通知
-            notificationManager.notify(NOTIFICATION_ID, builder.build());
-        }
-    }
-
-
-
-
-
-
-
-
 
     /**
      * 设置播放列表和当前播放的音乐索引
@@ -391,26 +183,59 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
      * @param index 当前播放的音乐索引
      */
     public void setPlayListAndIndex(List<MusicInfo> list, int index) {
+        if (list == null || list.isEmpty()) {
+            Log.e(TAG, "设置播放列表失败：列表为空");
+            return;
+        }
         this.musicList = list;
         this.currentMusicIndex = index;
-        Log.d(TAG, "设置播放列表，大小: " + (list != null ? list.size() : 0) + ", 初始索引: " + index);
-        // 立即播放当前选中的音乐
-        playMusic(currentMusicIndex);
+        // 初始化原始索引列表
+        originalIndexes = new ArrayList<>();
+        for (int i = 0; i < musicList.size(); i++) {
+            originalIndexes.add(i);
+        }
+        // 如果是随机模式，需要初始化随机索引列表
+        if (currentLoopMode == LoopMode.SHUFFLE) {
+            shufflePlaylist();
+        }
+
+        Log.d(TAG, "设置播放列表，大小: " + musicList.size() + ", 初始索引: " + index);
+        playMusic(currentMusicIndex); // 立即播放当前选中的音乐
     }
 
     /**
      * 播放指定索引的音乐
-     * @param index 音乐在列表中的索引
+     * @param index 音乐在列表中的索引 (原始列表索引)
      */
     private void playMusic(int index) {
         if (musicList == null || musicList.isEmpty() || index < 0 || index >= musicList.size()) {
             Log.e(TAG, "播放列表为空或索引无效");
+            if (eventListener != null) {
+                eventListener.onMusicError("播放列表为空或索引无效");
+            }
             return;
         }
 
-        currentMusicIndex = index;
+        currentMusicIndex = index; // 更新当前播放的原始索引
+
+        // 如果当前是随机模式，需要更新 currentShuffledIndex
+        if (currentLoopMode == LoopMode.SHUFFLE && shuffledIndexes != null) {
+            // 找到当前音乐在随机列表中的位置
+            currentShuffledIndex = shuffledIndexes.indexOf(currentMusicIndex);
+            if (currentShuffledIndex == -1) { // 如果没找到，重新生成随机列表并设置
+                shufflePlaylist();
+                currentShuffledIndex = shuffledIndexes.indexOf(currentMusicIndex);
+                if (currentShuffledIndex == -1) { // 仍然没找到，说明逻辑有问题或者列表为空
+                    Log.e(TAG, "随机列表未包含当前音乐索引，无法播放");
+                    if (eventListener != null) eventListener.onMusicError("随机播放列表异常");
+                    return;
+                }
+            }
+        }
+
+
         MusicInfo musicToPlay = musicList.get(currentMusicIndex);
-        Log.d(TAG, "准备播放音乐: " + musicToPlay.getMusicName() + " - " + musicToPlay.getAuthor());
+        Log.d(TAG, "准备播放音乐: " + musicToPlay.getMusicName() + " - " + musicToPlay.getAuthor() + ", URL: " + musicToPlay.getMusicUrl());
 
         try {
             if (mediaPlayer == null) {
@@ -424,33 +249,29 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
             mediaPlayer.setDataSource(musicToPlay.getMusicUrl()); // 设置音乐源
             mediaPlayer.prepareAsync(); // 异步准备
             mediaPlayer.setOnPreparedListener(mp -> {
-
-
                 mp.start(); // 准备完成后开始播放
-
-
                 Log.d(TAG, "音乐开始播放: " + musicToPlay.getMusicName());
+                updateNotification(musicToPlay, true); // 更新通知栏为播放状态
+                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING); // 更新 MediaSession 状态
 
-                // 播放开始时更新通知，并将服务提升为前台服务
-                buildAndShowNotification(musicToPlay, true);
-
-
-                // TODO: 通知 Activity 更新 UI (播放状态、总时长等)
-                // 可以通过 LocalBroadcastManager 或回调接口通知 Activity
-
-
+                if (eventListener != null) {
+                    eventListener.onMusicPrepared(musicToPlay); // 通知 Activity 音乐已准备好
+                }
             });
         } catch (IOException e) {
-
             Log.e(TAG, "设置数据源或准备播放器失败: " + e.getMessage());
-
             Toast.makeText(this, "播放失败: " + musicToPlay.getMusicName(), Toast.LENGTH_SHORT).show();
-
-            // 播放失败时也更新通知（显示暂停状态），并停止前台服务
-            buildAndShowNotification(musicToPlay, false);
-
-            stopForeground(false); // 停止前台服务，但保留通知
-
+            if (eventListener != null) {
+                eventListener.onMusicError("播放失败: " + e.getMessage());
+            }
+            // 尝试播放下一首
+            playNext(); // 避免卡死
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "MediaPlayer 状态错误: " + e.getMessage());
+            if (eventListener != null) {
+                eventListener.onMusicError("播放器状态异常: " + e.getMessage());
+            }
+            playNext(); // 尝试播放下一首
         }
     }
 
@@ -462,25 +283,19 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
             if (mediaPlayer.isPlaying()) {
                 mediaPlayer.pause();
                 Log.d(TAG, "音乐暂停");
-
-                // 暂停时更新通知
-                buildAndShowNotification(getCurrentMusic(), false);
-
-                // 从前台服务降级为普通服务，但通知仍然保留在通知栏
-                stopForeground(false); // false 表示保留通知，但服务不再是前台
-
-
-
+                updateNotification(getCurrentMusic(), false); // 更新通知栏为暂停状态
+                updatePlaybackState(PlaybackStateCompat.STATE_PAUSED); // 更新 MediaSession 状态
+                if (eventListener != null) {
+                    eventListener.onMusicPlayStatusChanged(false); // 通知 Activity 播放状态改变
+                }
             } else {
                 mediaPlayer.start();
                 Log.d(TAG, "音乐继续播放");
-
-                // 播放时更新通知，并重新提升为前台服务
-                buildAndShowNotification(getCurrentMusic(), true);
-                // 重新提升为前台服务，使用当前通知对象。注意：这里需要确保通知对象已存在或被重新构建。
-                // 实际操作中，buildAndShowNotification 内部会处理 startForeground
-
-
+                updateNotification(getCurrentMusic(), true); // 更新通知栏为播放状态
+                updatePlaybackState(PlaybackStateCompat.STATE_PLAYING); // 更新 MediaSession 状态
+                if (eventListener != null) {
+                    eventListener.onMusicPlayStatusChanged(true); // 通知 Activity 播放状态改变
+                }
             }
         } else {
             // 如果 MediaPlayer 未初始化或未播放，尝试播放当前音乐
@@ -488,38 +303,118 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
                 playMusic(currentMusicIndex);
             } else {
                 Log.w(TAG, "无法播放/暂停，MediaPlayer为空且无播放列表");
+                Toast.makeText(this, "无音乐可播放", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
     /**
-     * 播放上一首音乐 (基础逻辑，不含循环模式)
+     * 播放上一首音乐
      */
     public void playPrevious() {
         if (musicList == null || musicList.isEmpty()) {
             Log.w(TAG, "播放列表为空，无法播放上一首");
+            Toast.makeText(this, "播放列表为空", Toast.LENGTH_SHORT).show();
             return;
         }
-        int newIndex = currentMusicIndex - 1;
-        if (newIndex < 0) {
-            newIndex = musicList.size() - 1; // 简单循环到列表末尾
+
+        int newIndex = currentMusicIndex; // 默认不变
+
+        switch (currentLoopMode) {
+            case SEQUENCE:
+            case SINGLE: // 单曲循环模式下，上一首还是上一首
+                newIndex = (currentMusicIndex - 1 + musicList.size()) % musicList.size();
+                break;
+            case SHUFFLE:
+                if (shuffledIndexes == null || shuffledIndexes.isEmpty()) {
+                    shufflePlaylist();
+                }
+                currentShuffledIndex = (currentShuffledIndex - 1 + shuffledIndexes.size()) % shuffledIndexes.size();
+                newIndex = shuffledIndexes.get(currentShuffledIndex);
+                break;
         }
         playMusic(newIndex);
     }
 
     /**
-     * 播放下一首音乐 (基础逻辑，不含循环模式)
+     * 播放下一首音乐
      */
     public void playNext() {
         if (musicList == null || musicList.isEmpty()) {
             Log.w(TAG, "播放列表为空，无法播放下一首");
+            Toast.makeText(this, "播放列表为空", Toast.LENGTH_SHORT).show();
             return;
         }
-        int newIndex = currentMusicIndex + 1;
-        if (newIndex >= musicList.size()) {
-            newIndex = 0; // 简单循环到列表开头
+
+        int newIndex = currentMusicIndex; // 默认不变
+
+        switch (currentLoopMode) {
+            case SEQUENCE:
+            case SINGLE: // 单曲循环模式下，下一首还是下一首
+                newIndex = (currentMusicIndex + 1) % musicList.size();
+                break;
+            case SHUFFLE:
+                if (shuffledIndexes == null || shuffledIndexes.isEmpty()) {
+                    shufflePlaylist();
+                }
+                currentShuffledIndex = (currentShuffledIndex + 1) % shuffledIndexes.size();
+                newIndex = shuffledIndexes.get(currentShuffledIndex);
+                break;
         }
         playMusic(newIndex);
+    }
+
+    /**
+     * 切换播放模式 (顺序 -> 单曲 -> 随机 -> 顺序)
+     */
+    public void switchLoopMode() {
+        switch (currentLoopMode) {
+            case SEQUENCE:
+                currentLoopMode = LoopMode.SINGLE;
+                break;
+            case SINGLE:
+                currentLoopMode = LoopMode.SHUFFLE;
+                shufflePlaylist(); // 切换到随机模式时，重新打乱列表
+                // 设置随机播放的初始索引为当前歌曲在随机列表中的位置
+                if (musicList != null && currentMusicIndex != -1) {
+                    currentShuffledIndex = shuffledIndexes.indexOf(currentMusicIndex);
+                    if (currentShuffledIndex == -1) { // 如果当前歌曲不在随机列表中，则从0开始
+                        currentShuffledIndex = 0;
+                    }
+                } else {
+                    currentShuffledIndex = 0;
+                }
+                break;
+            case SHUFFLE:
+                currentLoopMode = LoopMode.SEQUENCE;
+                break;
+        }
+        Log.d(TAG, "切换到播放模式: " + currentLoopMode);
+        if (eventListener != null) {
+            eventListener.onLoopModeChanged(currentLoopMode); // 通知 Activity 模式改变
+        }
+    }
+
+    /**
+     * 获取当前播放模式
+     * @return 当前 LoopMode
+     */
+    public LoopMode getLoopMode() {
+        return currentLoopMode;
+    }
+
+    /**
+     * 打乱播放列表索引 (用于随机播放)
+     */
+    private void shufflePlaylist() {
+        if (musicList != null && !musicList.isEmpty()) {
+            shuffledIndexes = new ArrayList<>(originalIndexes); // 从原始索引复制一份
+            Collections.shuffle(shuffledIndexes, new Random(System.nanoTime())); // 打乱顺序
+            Log.d(TAG, "播放列表已打乱: " + shuffledIndexes);
+        } else {
+            shuffledIndexes = new ArrayList<>();
+            Log.w(TAG, "播放列表为空，无法打乱");
+        }
     }
 
     /**
@@ -527,8 +422,13 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
      * @return 当前播放进度，如果未播放则返回0
      */
     public int getCurrentPosition() {
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            return mediaPlayer.getCurrentPosition();
+        if (mediaPlayer != null && (mediaPlayer.isPlaying() || currentMusicIndex != -1)) { // 即使暂停也要返回进度
+            try {
+                return mediaPlayer.getCurrentPosition();
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "getCurrentPosition IllegalStateException: " + e.getMessage());
+                return 0;
+            }
         }
         return 0;
     }
@@ -538,8 +438,13 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
      * @return 音乐总时长，如果未加载则返回0
      */
     public int getDuration() {
-        if (mediaPlayer != null) {
-            return mediaPlayer.getDuration();
+        if (mediaPlayer != null && currentMusicIndex != -1) {
+            try {
+                return mediaPlayer.getDuration();
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "getDuration IllegalStateException: " + e.getMessage());
+                return 0;
+            }
         }
         return 0;
     }
@@ -549,7 +454,15 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
      * @return true if playing, false otherwise
      */
     public boolean isPlaying() {
-        return mediaPlayer != null && mediaPlayer.isPlaying();
+        if (mediaPlayer != null) {
+            try {
+                return mediaPlayer.isPlaying();
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "isPlaying IllegalStateException: " + e.getMessage());
+                return false;
+            }
+        }
+        return false;
     }
 
     /**
@@ -558,8 +471,13 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
      */
     public void seekTo(int positionMs) {
         if (mediaPlayer != null) {
-            mediaPlayer.seekTo(positionMs);
-            Log.d(TAG, "跳转到: " + positionMs + "ms");
+            try {
+                mediaPlayer.seekTo(positionMs);
+                Log.d(TAG, "跳转到: " + positionMs + "ms");
+                updatePlaybackState(mediaPlayer.isPlaying() ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED);
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "seekTo IllegalStateException: " + e.getMessage());
+            }
         }
     }
 
@@ -578,8 +496,22 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
     @Override
     public void onCompletion(MediaPlayer mp) {
         Log.d(TAG, "音乐播放完成");
-        // TODO: 根据播放模式自动播放下一首 (后续步骤实现)
-        playNext(); // 暂时简单播放下一首
+        // 根据播放模式自动播放下一首
+        switch (currentLoopMode) {
+            case SEQUENCE:
+                playNext();
+                break;
+            case SINGLE:
+                // 单曲循环，重新播放当前歌曲
+                playMusic(currentMusicIndex);
+                break;
+            case SHUFFLE:
+                playNext(); // 随机模式下，也调用 playNext
+                break;
+        }
+        if (eventListener != null) {
+            eventListener.onMusicCompleted(getCurrentMusic()); // 通知 Activity 播放完成，并传递下一首音乐信息
+        }
     }
 
     // --- MediaPlayer.OnErrorListener 回调 ---
@@ -588,35 +520,228 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
         Log.e(TAG, "MediaPlayer 播放错误: what=" + what + ", extra=" + extra);
         // 释放资源并尝试播放下一首或提示用户
         mp.reset();
-        Toast.makeText(this, "播放出错，尝试播放下一首", Toast.LENGTH_SHORT).show();
+        String errorMessage = "播放出错，错误码: " + what;
+        Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
+        if (eventListener != null) {
+            eventListener.onMusicError(errorMessage);
+        }
         playNext(); // 尝试播放下一首
         return true; // 表示已处理错误
     }
 
-
     /**
-     * 获取当前播放状态
-     * @return -1: 未初始化/未播放; 0: 暂停; 1: 播放中
+     * 创建通知渠道 (Android 8.0 Oreo 及以上需要)
      */
-    public int getMusicState() {
-        if (mediaPlayer == null) {
-            return -1; // 未初始化
-        }
-        // 确保播放器处于有效状态，否则 isPlaying() 会抛出 IllegalStateException
-        try {
-            if (mediaPlayer.isPlaying()) {
-                return 1; // 播放中
-            } else {
-                return 0; // 暂停中
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription("用于音乐播放控制");
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.createNotificationChannel(channel);
             }
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "获取播放状态异常: " + e.getMessage());
-            return -1;
         }
     }
 
+    /**
+     * 更新通知栏
+     * @param musicInfo 当前播放的音乐信息
+     * @param isPlaying 是否正在播放
+     */
+    private void updateNotification(MusicInfo musicInfo, boolean isPlaying) {
+        if (musicInfo == null) {
+            stopForeground(true); // 没有音乐时停止前台服务
+            return;
+        }
+
+        // 创建点击通知时跳转的 Intent
+        Intent notificationIntent = new Intent(this, MusicPlayerActivity.class);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+
+        // 创建播放/暂停按钮的 PendingIntent
+        Intent playPauseIntent = new Intent(this, MusicPlayerService.class);
+        playPauseIntent.setAction("ACTION_PLAY_PAUSE");
+        PendingIntent playPausePendingIntent = PendingIntent.getService(this, 0, playPauseIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        // 创建上一首按钮的 PendingIntent
+        Intent previousIntent = new Intent(this, MusicPlayerService.class);
+        previousIntent.setAction("ACTION_PREVIOUS");
+        PendingIntent previousPendingIntent = PendingIntent.getService(this, 0, previousIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        // 创建下一首按钮的 PendingIntent
+        Intent nextIntent = new Intent(this, MusicPlayerService.class);
+        nextIntent.setAction("ACTION_NEXT");
+        PendingIntent nextPendingIntent = PendingIntent.getService(this, 0, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        // 创建停止按钮的 PendingIntent
+        Intent stopIntent = new Intent(this, MusicPlayerService.class);
+        stopIntent.setAction("ACTION_STOP");
+        PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+
+        // 构建通知
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_play_big) // 小图标
+                .setContentTitle(musicInfo.getMusicName()) // 标题
+                .setContentText(musicInfo.getAuthor()) // 内容
+                .setContentIntent(pendingIntent) // 点击通知跳转
+                .setPriority(NotificationCompat.PRIORITY_LOW) // 优先级
+                .setOnlyAlertOnce(true) // 只响一次
+                .setWhen(0) // 隐藏时间戳
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // 锁屏可见
+                .setOngoing(isPlaying) // 播放时持续显示，不可滑动清除
+                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle() // 媒体样式通知
+                        .setShowActionsInCompactView(0, 1, 2) // 在紧凑视图中显示上一首、播放/暂停、下一首
+                        .setMediaSession(mediaSession.getSessionToken())) // 关联 MediaSession
+
+                // 添加控制按钮
+                .addAction(R.drawable.ic_previous, "上一首", previousPendingIntent)
+                .addAction(isPlaying ? R.drawable.ic_pause_big : R.drawable.ic_play_big, isPlaying ? "暂停" : "播放", playPausePendingIntent)
+                .addAction(R.drawable.ic_next, "下一首", nextPendingIntent)
+                // 可以选择添加停止按钮
+                // .addAction(R.drawable.ic_close, "停止", stopPendingIntent)
+                ;
+
+
+        Notification notification = builder.build();
+
+        // 将服务设置为前台服务，并显示通知
+        startForeground(NOTIFICATION_ID, notification);
+
+
+        // 使用 Glide 加载封面图作为通知的大图标
+        Glide.with(getApplicationContext())
+                .asBitmap()
+                .load(musicInfo.getCoverUrl())
+                // 使用匿名 Target 接口来处理图片加载结果
+                .into(new Target<Bitmap>() {
 
 
 
+                    @Override
+                    public void onStart() {
 
+                    }
+
+                    @Override
+                    public void onStop() {
+                        // 加载停止时回调，可选操作
+                    }
+
+                    @Override
+                    public void onDestroy() {
+
+                    }
+
+                    // 【修复】实现 Target 接口中缺失的 getSize 方法
+                    @Override
+                    public void getSize(@NonNull SizeReadyCallback cb) {
+                        // 告知 Glide 目标尺寸。对于通知栏图标，通常不需要特定尺寸，
+                        // 可以使用 Target.SIZE_ORIGINAL 来加载原始尺寸，
+                        // 或者根据通知图标的最佳实践设置一个固定大小，例如 512x512。
+                        // 这里我们使用原始尺寸，让 Glide 自行处理缩放。
+                        cb.onSizeReady(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL);
+                    }
+
+                    @Override
+                    public void removeCallback(@NonNull SizeReadyCallback cb) {
+
+                    }
+
+                    @Override
+                    public void setRequest(@Nullable Request request) {
+
+                    }
+
+                    @Nullable
+                    @Override
+                    public Request getRequest() {
+                        return null;
+                    }
+
+                    @Override
+                    public void onLoadStarted(@Nullable Drawable placeholder) {
+                        // 加载开始时回调，可选操作
+                    }
+
+                    @Override
+                    public void onLoadCleared(@Nullable Drawable placeholder) {
+                        // 当资源不再需要时（例如，请求被取消或另一个请求开始）回调。
+                        // 在这里可以清除之前设置的图标，以避免显示旧图片。
+                        builder.setLargeIcon((Bitmap) null); // 显式转换为 Bitmap，解决歧义
+                        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                        if (manager != null) {
+                            manager.notify(NOTIFICATION_ID, builder.build());
+                        }
+                    }
+
+                    @Override
+                    public void onLoadFailed(@Nullable Drawable errorDrawable) {
+                        // 图片加载失败时回调
+                        builder.setLargeIcon((Bitmap) null); // 显式转换为 Bitmap，解决歧义
+                        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                        if (manager != null) {
+                            manager.notify(NOTIFICATION_ID, builder.build());
+                        }
+                    }
+
+                    @Override
+                    public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                        // 图片加载成功时回调
+                        builder.setLargeIcon(resource); // 设置大图标
+                        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                        if (manager != null) {
+                            manager.notify(NOTIFICATION_ID, builder.build());
+                        }
+                    }
+                    // 【移除】void_onDestroy() 方法，它不是 Target 接口的成员，且命名不正确
+                });
+    }
+
+    /**
+     * 更新 MediaSession 的播放状态
+     * @param state 播放状态 (e.g., PlaybackStateCompat.STATE_PLAYING, STATE_PAUSED)
+     */
+    private void updatePlaybackState(int state) {
+        if (mediaSession != null) {
+            playbackStateBuilder.setState(state, getCurrentPosition(), 1.0f); // 1.0f 是播放速度
+            mediaSession.setPlaybackState(playbackStateBuilder.build());
+        }
+    }
+
+    // MediaSession 回调，处理来自通知栏或蓝牙设备的媒体控制事件
+    private class MediaSessionCallback extends MediaSessionCompat.Callback {
+        @Override
+        public void onPlay() {
+            super.onPlay();
+            togglePlayPause();
+        }
+
+        @Override
+        public void onPause() {
+            super.onPause();
+            togglePlayPause();
+        }
+
+        @Override
+        public void onSkipToNext() {
+            super.onSkipToNext();
+            playNext();
+        }
+
+        @Override
+        public void onSkipToPrevious() {
+            super.onSkipToPrevious();
+            playPrevious();
+        }
+
+        @Override
+        public void onSeekTo(long pos) {
+            super.onSeekTo(pos);
+            seekTo((int) pos);
+        }
+        // 还可以覆盖其他方法，如 onStop, onPlayFromMediaId 等
+    }
 }

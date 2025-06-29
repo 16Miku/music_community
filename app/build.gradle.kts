@@ -81,14 +81,18 @@ dependencies {
     // Glide 图片转换库，用于模糊、圆角等效果
     implementation("jp.wasabeef:glide-transformations:4.3.0")
 
+    // Glide 图片模糊转换库 (jp.wasabeef:glide-transformations)
+    implementation ("jp.wasabeef:glide-transformations:4.3.0") // 检查最新版本
 
-    // CardView 依赖
-    implementation("androidx.cardview:cardview:1.0.0")
-
+    // Android Palette 库 (用于提取图片主题色)
+    implementation ("androidx.palette:palette-ktx:1.0.0") // 可以使用最新稳定版本
 
     // Glide 注解处理器，用于生成 GlideApp 类，提供更好的API体验和自定义模块支持
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
+
+    // CardView 依赖
+    implementation("androidx.cardview:cardview:1.0.0")
 
 
 

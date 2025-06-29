@@ -2,16 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-
     <uses-permission android:name="android.permission.INTERNET" />
-
-    <!-- 前台服务权限，用于后台播放音乐 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- Android 13 (API 33) 及以上需要通知权限 -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-
-
-
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/> <!-- 确保此行已存在 -->
 
     <application
         android:allowBackup="true"
@@ -25,9 +18,6 @@
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="31">
 
-
-
-
         <activity
             android:name=".SplashActivity"
             android:exported="true"
@@ -38,17 +28,11 @@
             </intent-filter>
         </activity>
 
-
-
-
         <activity
             android:name=".MainActivity"
             android:exported="false">
-
         </activity>
 
-
-        <!-- 注册 MusicPlayerActivity -->
         <activity
             android:name=".MusicPlayerActivity"
             android:exported="false"
@@ -56,11 +40,10 @@
             android:theme="@style/Theme.Music_community.FullScreenPlayer">
         </activity>
 
-        <!-- 注册 MusicPlayerService  -->
+        <!-- 【修改】为 MusicPlayerService 添加 foregroundServiceType -->
         <service android:name=".MusicPlayerService"
-            android:exported="false"/>
-
-
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" /> <!-- 【新增/修改此行】 -->
 
     </application>
 
