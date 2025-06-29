@@ -1,5 +1,6 @@
 package com.example.music_community.adapter;
 
+import android.content.Intent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -11,9 +12,11 @@ import com.chad.library.adapter.base.BaseQuickAdapter;
 import com.chad.library.adapter.base.listener.OnItemClickListener;
 import com.chad.library.adapter.base.viewholder.BaseViewHolder;
 import com.bumptech.glide.Glide;
+import com.example.music_community.MusicPlayerActivity;
 import com.example.music_community.R;
 import com.example.music_community.model.MusicInfo;
 
+import java.io.Serializable;
 import java.util.List;
 
 public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder> {
@@ -35,7 +38,19 @@ public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder
             public void onItemClick(@NonNull BaseQuickAdapter<?, ?> adapter, @NonNull View view, int position) {
                 MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
                 if (clickedItem != null) {
-                    Toast.makeText(view.getContext(), "点击了音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
+//                    Toast.makeText(view.getContext(), "点击了音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
+
+                    // 启动 MusicPlayerActivity 并传递数据
+                    Intent intent = new Intent( view.getContext(), MusicPlayerActivity.class );
+
+                    // 传递整个音乐列表
+                    intent.putExtra( MusicPlayerActivity.EXTRA_MUSIC_LIST, (Serializable) getData() );
+
+                    // 传递当前点击的音乐在列表中的索引
+                    intent.putExtra( MusicPlayerActivity.EXTRA_CURRENT_POSITION, position  );
+
+                    view.getContext().startActivity( intent );
+
                 }
             }
         });
@@ -57,7 +72,20 @@ public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder
                 if (view.getId() == R.id.iv_play_button_large) {
                     MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
                     if (clickedItem != null) {
-                        Toast.makeText(view.getContext(), "播放音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
+//                        Toast.makeText(view.getContext(), "播放音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
+
+
+                        // 启动 MusicPlayerActivity 并传递数据
+                        Intent intent = new Intent(view.getContext(), MusicPlayerActivity.class);
+
+                        intent.putExtra(MusicPlayerActivity.EXTRA_MUSIC_LIST, (Serializable) getData());
+
+                        intent.putExtra(MusicPlayerActivity.EXTRA_CURRENT_POSITION, position);
+
+                        view.getContext().startActivity(intent);
+
+
+
                     }
                 }
             });
@@ -67,7 +95,19 @@ public class MusicItemAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder
                 if (view.getId() == R.id.iv_play_button_square) {
                     MusicInfo clickedItem = (MusicInfo) adapter.getItem(position);
                     if (clickedItem != null) {
-                        Toast.makeText(view.getContext(), "播放音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
+//                        Toast.makeText(view.getContext(), "播放音乐: " + clickedItem.getMusicName(), Toast.LENGTH_SHORT).show();
+
+
+                        // 启动 MusicPlayerActivity 并传递数据
+                        Intent intent = new Intent(view.getContext(), MusicPlayerActivity.class);
+
+                        intent.putExtra(MusicPlayerActivity.EXTRA_MUSIC_LIST, (Serializable) getData());
+
+                        intent.putExtra(MusicPlayerActivity.EXTRA_CURRENT_POSITION, position);
+
+                        view.getContext().startActivity(intent);
+
+
                     }
                 }
             });

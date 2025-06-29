@@ -2,7 +2,10 @@ package com.example.music_community.model; // 建议创建一个 model 包来存
 
 import com.google.gson.annotations.SerializedName;
 
-public class MusicInfo {
+import java.io.Serializable;
+
+// 实现 Serializable 接口
+public class MusicInfo implements Serializable {
     @SerializedName("id")
     private Long id; // 音乐ID
     @SerializedName("musicName")
