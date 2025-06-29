@@ -3,6 +3,7 @@ package com.example.music_community;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.graphics.drawable.Drawable; // 导入 Drawable
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -12,16 +13,19 @@ import android.view.animation.LinearInterpolator;
 import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DataSource; // 导入 DataSource
+import com.bumptech.glide.load.engine.GlideException; // 导入 GlideException
 import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.CircleCrop;
+import com.bumptech.glide.request.RequestListener; // 导入 RequestListener
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.Target; // 导入 Target
 import com.example.music_community.model.MusicInfo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-// 【修改】导入顶层接口
 import com.example.music_community.MusicPlaybackFragmentListener;
 
 
@@ -36,16 +40,9 @@ public class MusicPlaybackFragment extends Fragment {
     private MusicInfo musicInfo;
     private boolean isPlaying = false;
 
-
-    // 【修改】Fragment 回调监听器，使用顶层接口类型
     private MusicPlaybackFragmentListener listener;
 
 
-    /**
-     * 创建 MusicPlaybackFragment 实例的工厂方法
-     * @param musicInfo 要显示的音乐信息
-     * @return MusicPlaybackFragment 实例
-     */
     public static MusicPlaybackFragment newInstance(MusicInfo musicInfo) {
         MusicPlaybackFragment fragment = new MusicPlaybackFragment();
         Bundle args = new Bundle();
@@ -57,15 +54,11 @@ public class MusicPlaybackFragment extends Fragment {
     @Override
     public void onAttach(@NonNull Context context) {
         super.onAttach(context);
-        // 【修改】在 Fragment 附加到 Activity 时，尝试获取监听器
-        // 现在 MusicPlayerActivity 直接实现了 MusicPlaybackFragmentListener 接口
         if (context instanceof MusicPlaybackFragmentListener) {
             listener = (MusicPlaybackFragmentListener) context;
             Log.d(TAG, "onAttach: Listener attached.");
         } else {
-            // 如果宿主 Activity 没有实现该接口，则抛出运行时异常或记录错误
             Log.e(TAG, "onAttach: The hosting Activity must implement MusicPlaybackFragmentListener");
-            // throw new RuntimeException(context.toString() + " must implement MusicPlaybackFragmentListener");
         }
     }
 
@@ -93,21 +86,24 @@ public class MusicPlaybackFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         if (musicInfo != null) {
             loadMusicCover(musicInfo.getCoverUrl());
+        } else {
+            Log.w(TAG, "onViewCreated: musicInfo is null, cannot load cover.");
         }
         setupCoverAnimator();
         Log.d(TAG, "onViewCreated: Cover animator setup.");
 
-        // 【新增】在 Fragment 的视图创建完成后，通知 Activity 自身已准备好
+        // 【新增】检查 ivMusicCoverPlayer 的尺寸，确保它不是 0x0
+        if (ivMusicCoverPlayer != null) {
+            ivMusicCoverPlayer.post(() -> {
+                Log.d(TAG, "ivMusicCoverPlayer dimensions: " + ivMusicCoverPlayer.getWidth() + "x" + ivMusicCoverPlayer.getHeight());
+            });
+        }
+
         if (listener != null) {
             listener.onMusicPlaybackFragmentReady(this);
         }
-        // 此处不再调用 updateMusicInfoAndPlayState，它将由 Activity 在收到 onMusicPlaybackFragmentReady 后统一同步
     }
 
-    /**
-     * 加载音乐封面图片
-     * @param coverUrl 封面图片 URL
-     */
     private void loadMusicCover(String coverUrl) {
         Log.d(TAG, "loadMusicCover: Loading cover from URL: " + coverUrl);
         RequestOptions requestOptions = new RequestOptions()
@@ -118,12 +114,22 @@ public class MusicPlaybackFragment extends Fragment {
                 .apply(requestOptions)
                 .placeholder(R.drawable.ic_launcher_foreground)
                 .error(R.drawable.ic_launcher_foreground)
+                .listener(new RequestListener<Drawable>() { // 使用 Drawable 作为类型
+                    @Override
+                    public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
+                        Log.e(TAG, "Glide: Cover image load FAILED!", e);
+                        return false;
+                    }
+
+                    @Override
+                    public boolean onResourceReady(Drawable resource, Object model, Target<Drawable> target, DataSource dataSource, boolean isFirstResource) {
+                        Log.d(TAG, "Glide: Cover image loaded successfully.");
+                        return false;
+                    }
+                })
                 .into(ivMusicCoverPlayer);
     }
 
-    /**
-     * 设置封面图片旋转动画
-     */
     private void setupCoverAnimator() {
         coverAnimator = ObjectAnimator.ofFloat(ivMusicCoverPlayer, "rotation", 0f, 360f);
         coverAnimator.setDuration(20000);
@@ -132,9 +138,6 @@ public class MusicPlaybackFragment extends Fragment {
         coverAnimator.setRepeatMode(ValueAnimator.RESTART);
     }
 
-    /**
-     * 启动封面旋转动画
-     */
     public void startCoverAnimation() {
         if (coverAnimator != null) {
             if (!coverAnimator.isRunning()) {
@@ -151,9 +154,6 @@ public class MusicPlaybackFragment extends Fragment {
         }
     }
 
-    /**
-     * 暂停封面旋转动画
-     */
     public void pauseCoverAnimation() {
         if (coverAnimator != null) {
             if (coverAnimator.isRunning()) {
@@ -170,10 +170,6 @@ public class MusicPlaybackFragment extends Fragment {
         }
     }
 
-
-    /**
-     * 停止封面旋转动画 (取消并回到初始状态)
-     */
     public void stopCoverAnimation() {
         if (coverAnimator != null) {
             if (coverAnimator.isRunning() || coverAnimator.isPaused() || coverAnimator.isStarted()) {
@@ -187,16 +183,9 @@ public class MusicPlaybackFragment extends Fragment {
         }
     }
 
-    /**
-     * 【优化】更新 Fragment 的音乐信息和播放状态，并根据播放状态控制动画
-     * 此方法现在是动画控制的唯一入口，确保动画状态与播放状态同步
-     * @param newMusicInfo 新的音乐信息
-     * @param newIsPlaying 新的播放状态
-     */
     public void updateMusicInfoAndPlayState(MusicInfo newMusicInfo, boolean newIsPlaying) {
         Log.d(TAG, "updateMusicInfoAndPlayState: newMusicInfo=" + (newMusicInfo != null ? newMusicInfo.getMusicName() : "null") + ", newIsPlaying=" + newIsPlaying + ", currentIsPlaying=" + this.isPlaying);
 
-        // 1. 更新音乐信息并重新加载封面（如果音乐发生变化）
         if (newMusicInfo != null && !newMusicInfo.equals(this.musicInfo)) {
             this.musicInfo = newMusicInfo;
             if (ivMusicCoverPlayer != null) {
@@ -208,20 +197,18 @@ public class MusicPlaybackFragment extends Fragment {
         } else if (newMusicInfo == null && this.musicInfo != null) {
             this.musicInfo = null;
             if (ivMusicCoverPlayer != null) {
-                ivMusicCoverPlayer.setImageDrawable(null); // 清空图片
+                ivMusicCoverPlayer.setImageDrawable(null);
             }
             Log.d(TAG, "updateMusicInfoAndPlayState: MusicInfo set to null, cover cleared.");
         }
 
-        // 2. 根据新的播放状态控制动画
         if (this.isPlaying != newIsPlaying) {
-            this.isPlaying = newIsPlaying; // 更新 Fragment 内部的播放状态
-
+            this.isPlaying = newIsPlaying;
             if (coverAnimator != null) {
                 if (this.isPlaying) {
-                    startCoverAnimation(); // 启动或恢复动画
+                    startCoverAnimation();
                 } else {
-                    pauseCoverAnimation(); // 暂停动画
+                    pauseCoverAnimation();
                 }
             } else {
                 Log.w(TAG, "updateMusicInfoAndPlayState: coverAnimator is null, cannot control animation.");
@@ -247,11 +234,10 @@ public class MusicPlaybackFragment extends Fragment {
     @Override
     public void onDetach() {
         super.onDetach();
-        // 【修改】在 Fragment 从 Activity 分离时，通知 Activity 清空引用
         if (listener != null) {
             listener.onMusicPlaybackFragmentDetached();
         }
-        listener = null; // 清空监听器引用，防止内存泄漏
+        listener = null;
         Log.d(TAG, "onDetach: Listener detached.");
     }
 }
