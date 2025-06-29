@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator; // 【新增】
 import android.widget.ImageView;
+
+import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.example.music_community.R;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -83,18 +85,19 @@ public class MusicPlaybackFragment extends Fragment {
      * @param coverUrl 封面图片 URL
      */
     private void loadMusicCover(String coverUrl) {
-
-        // 使用 Glide 加载图片，并应用圆角转换
+        // 使用 Glide 加载图片，并应用圆形裁剪和居中裁剪
         RequestOptions requestOptions = new RequestOptions()
-                .transform(new CenterCrop(), new RoundedCorners(24)); // 圆角半径24dp
+                // 【修改】使用 CenterCrop 和 CircleCrop 组合，确保图片居中并裁剪为圆形
+                .transform(new CenterCrop(), new CircleCrop());
 
         Glide.with(this)
                 .load(coverUrl)
                 .apply(requestOptions)
-                .placeholder( R.drawable.ic_launcher_foreground) // 占位图
-                .error( R.drawable.ic_launcher_foreground) // 错误图
+                .placeholder(R.drawable.ic_launcher_foreground) // 占位图
+                .error(R.drawable.ic_launcher_foreground) // 错误图
                 .into(ivMusicCoverPlayer);
     }
+
 
 
     /**

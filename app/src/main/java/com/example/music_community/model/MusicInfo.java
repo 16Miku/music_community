@@ -3,6 +3,7 @@ package com.example.music_community.model; // 建议创建一个 model 包来存
 import com.google.gson.annotations.SerializedName;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 // 实现 Serializable 接口
 public class MusicInfo implements Serializable {
@@ -32,6 +33,29 @@ public class MusicInfo implements Serializable {
         this.musicUrl = musicUrl;
         this.lyricUrl = lyricUrl;
     }
+
+
+    // ... 其他代码 ...
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        MusicInfo musicInfo = (MusicInfo) o;
+        // 通常，音乐的唯一标识是 ID，如果 ID 相同，则认为是同一首歌
+        // 使用 Objects.equals 处理可能为 null 的情况
+        return Objects.equals(id, musicInfo.id);
+    }
+
+    @Override
+    public int hashCode() {
+        // 使用 Objects.hash 处理可能为 null 的情况
+        return Objects.hash(id);
+    }
+// ... 其他代码 ...
+
+
+
 
     // Getter 和 Setter 方法
     public Long getId() {

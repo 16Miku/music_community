@@ -66,6 +66,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
         void onMusicCompleted(MusicInfo nextMusicInfo); // 音乐播放完成
         void onMusicError(String errorMessage); // 播放出错
         void onLoopModeChanged(LoopMode newMode); // 播放模式改变
+
     }
 
     private OnMusicPlayerEventListener eventListener; // 事件监听器实例
