@@ -1,19 +1,20 @@
 package com.example.music_community.adapter;
 
-import androidx.annotation.NonNull;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.annotation.NonNull; // 导入 NonNull 注解
+import androidx.fragment.app.Fragment; // 导入 Fragment 类
+import androidx.fragment.app.FragmentActivity; // 导入 FragmentActivity 类
+import androidx.viewpager2.adapter.FragmentStateAdapter; // 导入 FragmentStateAdapter 类
 
-import com.example.music_community.LyricFragment;
-import com.example.music_community.MusicPlaybackFragment;
-import com.example.music_community.model.MusicInfo;
+import com.example.music_community.LyricFragment; // 导入 LyricFragment 类
+import com.example.music_community.MusicPlaybackFragment; // 导入 MusicPlaybackFragment 类
+import com.example.music_community.model.MusicInfo; // 导入 MusicInfo 模型类
 
-import java.util.List;
+import java.util.List; // 导入 List 接口
 
 public class PlayerPagerAdapter extends FragmentStateAdapter {
 
     private MusicInfo currentMusicInfo; // 当前播放的音乐信息
+    // 【移除】不再需要 isPlaying 字段，因为播放状态将直接推送到 MusicPlaybackFragment
 
     public PlayerPagerAdapter(@NonNull FragmentActivity fragmentActivity) {
         super(fragmentActivity);
@@ -23,9 +24,9 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
      * 设置当前播放的音乐信息，并通知适配器数据变更
      * @param musicInfo 当前播放的音乐信息
      */
-    public void setCurrentMusicInfo(MusicInfo musicInfo) {
+    public void setCurrentMusicInfo(MusicInfo musicInfo) { // 【还原】不再接收 isPlaying 参数
         this.currentMusicInfo = musicInfo;
-        notifyDataSetChanged(); // 通知 ViewPager2 重新创建 Fragment
+        notifyDataSetChanged(); // 通知 ViewPager2 重新创建或更新 Fragment
     }
 
     @NonNull
@@ -34,6 +35,7 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
         // 根据位置返回不同的 Fragment
         if (position == 0) {
             // 位置0是音乐播放页
+            // 【还原】创建 MusicPlaybackFragment 时不再传入 isPlaying
             return MusicPlaybackFragment.newInstance(currentMusicInfo);
         } else {
             // 位置1是歌词页
@@ -47,11 +49,10 @@ public class PlayerPagerAdapter extends FragmentStateAdapter {
         return currentMusicInfo != null ? 2 : 0;
     }
 
-    // 【新增】重写 getItemId 和 containsItem，帮助 ViewPager2 更好地管理 Fragment 状态
+    // 重写 getItemId 和 containsItem，帮助 ViewPager2 更好地管理 Fragment 状态
     @Override
     public long getItemId(int position) {
         // 使用音乐ID + position 作为唯一ID，确保当音乐切换时，Fragment 会被重新创建
-        // 或者简单地使用 position，如果 Fragment 内容完全依赖于 currentMusicInfo
         if (currentMusicInfo != null) {
             return (currentMusicInfo.getId() != null ? currentMusicInfo.getId().hashCode() : 0) + position;
         }
