@@ -4,7 +4,7 @@
 APK：
 
 
-[music_day3.mp4](media/music_day3.mp4)
+[music_day3.apk](APK/music_day3.apk)
 
 初版视频：
 
