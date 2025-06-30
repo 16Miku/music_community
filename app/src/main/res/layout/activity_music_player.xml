@@ -209,6 +209,21 @@
                 android:focusable="true"
                 android:padding="8dp"/>
 
+
+            <ImageView
+                android:id="@+id/iv_favorite"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_favorite_border"
+
+                android:contentDescription="Favorite"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="8dp"/>
+
+
+
         </LinearLayout>
     </LinearLayout>
 

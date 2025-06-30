@@ -1,5 +1,7 @@
 package com.example.music_community;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -13,6 +15,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -37,6 +40,7 @@ import com.example.music_community.adapter.PlayerPagerAdapter;
 import com.example.music_community.model.MusicInfo;
 import com.google.android.material.snackbar.Snackbar;
 // import jp.wasabeef.glide.transformations.BlurTransformation; // 不再需要模糊转换
+import android.content.SharedPreferences;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -60,6 +64,16 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
     private ImageView ivClosePlayer;
     private ViewPager2 viewPagerPlayer;
     private ConstraintLayout musicPlayerRootLayout;
+
+
+    private ImageView ivFavorite;
+    private boolean isFavorite = false; // 默认未收藏
+    private MusicInfo currentMusic; // 当前播放的音乐
+    private static final String PREFS_NAME = "MusicPrefs"; // SharedPreferences 文件名
+    private static final String KEY_FAVORITE = "favorite_"; // 收藏状态的键
+
+
+
 
     // 底部控制面板的UI
     private TextView tvPlayerMusicName;
@@ -123,6 +137,16 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
                 pendingMusicInfo = currentMusic;
                 pendingIsPlaying = musicPlayerService.isPlaying();
                 syncFragmentState();
+
+
+                MusicPlayerActivity.this.currentMusic = currentMusic; // 确保在这里设置 currentMusic
+                isFavorite = getFavoriteState(MusicPlayerActivity.this.currentMusic.getId()); // 也需要使用 MusicPlayerActivity.this
+                updateFavoriteIcon();
+
+
+
+
+
             } else {
                 // 如果服务没有音乐，可以关闭页面或显示提示
                 Toast.makeText(MusicPlayerActivity.this, "当前无播放歌曲", Toast.LENGTH_SHORT).show();
@@ -175,6 +199,58 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 绑定服务后，读取收藏状态
+        if (isServiceBound && musicPlayerService != null) {
+            currentMusic = musicPlayerService.getCurrentMusic();
+            if (currentMusic != null) {
+                isFavorite = getFavoriteState(currentMusic.getId());
+                updateFavoriteIcon();
+            }
+        }
+    }
+
+
+    /**
+     * 从本地存储读取收藏状态
+     * @param musicId 音乐ID
+     * @return 收藏状态
+     */
+    private boolean getFavoriteState(Long musicId) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return prefs.getBoolean(KEY_FAVORITE + musicId, false);
+    }
+
+    /**
+     * 将收藏状态保存到本地存储
+     * @param musicId 音乐ID
+     * @param favorite 收藏状态
+     */
+    private void saveFavoriteState(Long musicId, boolean favorite) {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putBoolean(KEY_FAVORITE + musicId, favorite);
+        editor.apply();
+    }
+
+    /**
+     * 更新收藏图标
+     */
+    private void updateFavoriteIcon() {
+        if (isFavorite) {
+            ivFavorite.setImageResource(R.drawable.ic_favorite); // 已收藏图标
+        } else {
+            ivFavorite.setImageResource(R.drawable.ic_favorite_border); // 未收藏图标
+        }
+    }
+
+
+
+
+
+
 
 
     // 【新增】初始化服务监听器
@@ -191,7 +267,18 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
                 pendingMusicInfo = musicInfo;
                 pendingIsPlaying = true;
                 syncFragmentState();
+                isFavorite = getFavoriteState(musicInfo.getId()); // 获取收藏状态
+                updateFavoriteIcon(); // 更新收藏图标
+
+
+                MusicPlayerActivity.this.currentMusic = musicInfo; // 确保在这里设置 currentMusic
+                isFavorite = getFavoriteState(MusicPlayerActivity.this.currentMusic.getId()); // 获取收藏状态，并使用 MusicPlayerActivity.this
+                updateFavoriteIcon(); // 更新收藏图标
+
+
+
             }
+
 
             @Override
             public void onMusicPlayStatusChanged(boolean isPlaying, MusicInfo musicInfo) {
@@ -297,6 +384,10 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         ivNextSong = findViewById(R.id.iv_next_song);
         ivSongList = findViewById(R.id.iv_song_list);
 
+        ivFavorite = findViewById(R.id.iv_favorite);
+
+
+
         musicPlayerRootLayout = findViewById(R.id.music_player_root_layout);
     }
 
@@ -396,6 +487,28 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
 
         });
 
+
+
+        ivFavorite.setOnClickListener(v -> {
+            if (musicPlayerService != null && musicPlayerService.getCurrentMusic() != null) {
+                currentMusic = musicPlayerService.getCurrentMusic(); // 确保获取最新的 currentMusic
+                isFavorite = !isFavorite;
+                Log.d(TAG, "Favorite status toggled to: " + isFavorite);
+                saveFavoriteState(currentMusic.getId(), isFavorite);
+                Log.d(TAG, "Favorite state saved for musicId: " + currentMusic.getId());
+                updateFavoriteIcon();
+                Log.d(TAG, "Favorite icon updated");
+                startFavoriteAnimation();
+            } else {
+                Log.w(TAG, "No current music to favorite.");
+            }
+        });
+
+
+
+
+
+
         seekBarMusic.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -418,6 +531,29 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
             }
         });
     }
+
+
+
+
+    private void startFavoriteAnimation() {
+        float startScale = isFavorite ? 1.0f : 1.2f;
+        float endScale = isFavorite ? 1.2f : 1.0f;
+
+        ObjectAnimator scaleXAnimator = ObjectAnimator.ofFloat(ivFavorite, "scaleX", startScale, endScale);
+        ObjectAnimator scaleYAnimator = ObjectAnimator.ofFloat(ivFavorite, "scaleY", startScale, endScale);
+        ObjectAnimator rotationAnimator = ObjectAnimator.ofFloat(ivFavorite, "rotationY", 0f, 360f);
+
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.setDuration(1000);
+        animatorSet.setInterpolator(new AccelerateDecelerateInterpolator());
+        animatorSet.playTogether(scaleXAnimator, scaleYAnimator, rotationAnimator);
+        animatorSet.start();
+    }
+
+
+
+
+
 
 //    /**
 //     * 显示歌曲列表对话框

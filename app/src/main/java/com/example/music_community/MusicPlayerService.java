@@ -49,6 +49,11 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
     private List<MusicInfo> musicList;
     private int currentMusicIndex = -1; // 当前播放音乐在 musicList 中的索引
 
+
+    private MusicInfo currentMusicInfo; // 【新增】用于直接存储当前播放的音乐信息
+
+
+
     // 播放模式枚举
     public enum LoopMode {
         SEQUENCE, // 顺序播放
@@ -320,6 +325,12 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
                 for (OnMusicPlayerEventListener listener : listeners) {
                     listener.onMusicPrepared(musicToPlay);
                 }
+
+                // 确保在这里设置 currentMusicInfo
+                this.currentMusicInfo = musicToPlay;
+
+
+
             });
         } catch (IOException | IllegalStateException e) {
             Log.e(TAG, "playMusic: 播放失败: " + e.getMessage(), e);
@@ -550,10 +561,9 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
      * @return MusicInfo 对象，如果未播放则返回 null
      */
     public MusicInfo getCurrentMusic() {
-        if (musicList != null && currentMusicIndex >= 0 && currentMusicIndex < musicList.size()) {
-            return musicList.get(currentMusicIndex);
-        }
-        return null;
+
+
+        return currentMusicInfo; // 直接返回存储的当前音乐信息
     }
 
     /**
