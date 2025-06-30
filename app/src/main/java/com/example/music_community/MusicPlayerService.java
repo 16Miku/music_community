@@ -46,7 +46,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
     private static final String CHANNEL_ID = "music_player_channel"; // 通知渠道ID
     private static final String CHANNEL_NAME = "音乐播放"; // 通知渠道名称
 
-    private MediaPlayer mediaPlayer;
+    MediaPlayer mediaPlayer;
     private List<MusicInfo> musicList;
     private int currentMusicIndex = -1;
 
@@ -782,9 +782,12 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
 
 
 
-    // 【新增】获取播放列表的方法
+    /**
+     * 获取播放列表，提供给外部使用
+     * @return 当前播放列表的副本
+     */
     public List<MusicInfo> getPlaylist() {
-        return musicList;
+        return new ArrayList<>(musicList); // 返回一个副本，防止外部修改影响服务
     }
 
 

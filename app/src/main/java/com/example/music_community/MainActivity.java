@@ -237,11 +237,24 @@ public class MainActivity extends AppCompatActivity implements MusicItemAdapter.
         });
 
         ivFloatingPlaylist.setOnClickListener(v -> {
-            Toast.makeText(this, "播放列表功能待开发", Toast.LENGTH_SHORT).show();
+//            Toast.makeText(this, "播放列表功能待开发", Toast.LENGTH_SHORT).show();
+
+            // 点击悬浮窗的播放列表按钮，显示 PlaylistDialogFragment
+            if (isServiceBound && musicPlayerService != null) {
+
+                PlaylistDialogFragment playlistDialog = new PlaylistDialogFragment();
+
+                playlistDialog.show(getSupportFragmentManager(), "playlist_dialog");
+
+            } else {
+                Toast.makeText(this, "播放服务未连接", Toast.LENGTH_SHORT).show();
+            }
+
+
         });
     }
 
-    private void updateFloatingPlayerUI(MusicInfo musicInfo, boolean isPlaying) {
+    void updateFloatingPlayerUI(MusicInfo musicInfo, boolean isPlaying) {
         if (floatingPlayerContainer == null) return;
 
         if (musicInfo != null) {

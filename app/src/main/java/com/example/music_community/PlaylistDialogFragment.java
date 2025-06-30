@@ -239,8 +239,9 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
     @Override
     public void onPlaylistItemDelete(MusicInfo musicInfo, int position) {
         if (isServiceBound && musicPlayerService != null) {
-            List<MusicInfo> currentList = musicPlayerService.getPlaylist();
-            if (currentList != null && !currentList.isEmpty() && position >= 0 && position < currentList.size()) {
+            List<MusicInfo> currentList = new ArrayList<>(musicPlayerService.getPlaylist());  // 获取播放列表的拷贝，避免在迭代时修改列表
+
+            if (currentList != null && position >= 0 && position < currentList.size()) {
                 // 1. 从播放列表中移除歌曲
                 currentList.remove(position);
 
@@ -248,8 +249,32 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
                 if (musicInfo.equals(musicPlayerService.getCurrentMusic())) {
                     // 2.1 播放列表为空
                     if (currentList.isEmpty()) {
-                        musicPlayerService.setPlayListAndIndex(new ArrayList<>(), -1); // 清空播放列表
+                        // 【修改】停止播放，并重置播放列表
+                        musicPlayerService.setPlayListAndIndex(new ArrayList<>(), -1);
+                        if (musicPlayerService.mediaPlayer != null) {
+                            musicPlayerService.mediaPlayer.stop();
+                        }
                         dismiss();
+
+                        // 【修改】通知 MainActivity 隐藏悬浮窗
+                        if (getActivity() instanceof MainActivity) {
+                            MainActivity activity = (MainActivity) getActivity();
+                            activity.updateFloatingPlayerUI(null, false);
+                        } else if (getActivity() instanceof MusicPlayerActivity) {
+                            // 如果是从 MusicPlayerActivity 删除的，则关闭该 Activity
+                            MusicPlayerActivity activity = (MusicPlayerActivity) getActivity();
+                            activity.finish();
+                        }
+
+                        // 【修改】停止播放服务
+                        Intent serviceIntent = new Intent(getContext(), MusicPlayerService.class);
+                        getContext().stopService(serviceIntent);
+
+                        // 【新增】通知 MainActivity 播放列表已更改
+                        for (MusicPlayerService.OnMusicPlayerEventListener listener : musicPlayerService.listeners) {
+                            listener.onPlaylistChanged(new ArrayList<>());
+                        }
+
                     }
                     // 2.2 播放列表非空
                     else {
@@ -265,18 +290,23 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
                     }
                 }
 
-                // 3. 更新UI
-                updatePlaylistUI(currentList, musicPlayerService.getCurrentMusic(), musicPlayerService.getLoopMode());
+
+                
+                //  3. 更新播放列表
+                musicPlayerService.setPlayListAndIndex(currentList,0);
+                // 4. 通知所有监听器播放列表已更改
+                for (MusicPlayerService.OnMusicPlayerEventListener listener : musicPlayerService.listeners) {
+                    listener.onPlaylistChanged(currentList);
+                }
+
+
+
+                // 5. 更新UI
+                updatePlaylistUI(musicPlayerService.getPlaylist(), musicPlayerService.getCurrentMusic(), musicPlayerService.getLoopMode());
                 playlistAdapter.notifyDataSetChanged();
 
-                // 4. 通知 MainActivity 更新播放列表
-                if (isServiceBound) {
-                    musicPlayerService.setPlayListAndIndex(currentList,0);
-                    // 通知所有监听器播放列表已更改
-                    for (MusicPlayerService.OnMusicPlayerEventListener listener : musicPlayerService.listeners) {
-                        listener.onPlaylistChanged(currentList);
-                    }
-                }
+
+
             }
         }
     }
