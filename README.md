@@ -1,7 +1,10 @@
 
 # 实践课程-⾳乐社区第三天
 
+APK：
 
+
+[music_day3.mp4](media/music_day3.mp4)
 
 初版视频：
 
