@@ -1,3 +1,4 @@
+// B:\Android_Project\music-community\music_community\app\src\main\java\com\example\music_community\MainActivity.java
 package com.example.music_community;
 
 import android.content.ComponentName;
@@ -102,6 +103,11 @@ public class MainActivity extends AppCompatActivity implements MusicItemAdapter.
             if (musicPlayerService != null) {
                 musicPlayerService.removeOnMusicPlayerEventListener(musicPlayerListener);
             }
+
+            // 修复点：当服务断开连接时，明确隐藏悬浮播放器
+            // 这个问题通常发生在 MusicPlayerActivity 被关闭，MainActivity 恢复时，
+            // 如果服务已经停止，MainActivity 的 onResume 不会更新 UI，导致悬浮播放器不消失。
+            updateFloatingPlayerUI(null, false);
         }
     };
 
@@ -126,6 +132,9 @@ public class MainActivity extends AppCompatActivity implements MusicItemAdapter.
         // 当Activity返回前台时，再次同步UI状态
         if (isServiceBound) {
             updateFloatingPlayerUI(musicPlayerService.getCurrentMusic(), musicPlayerService.isPlaying());
+        } else {
+            // 如果服务未绑定，可能已停止，确保悬浮播放器隐藏
+            updateFloatingPlayerUI(null, false);
         }
     }
 
@@ -185,28 +194,53 @@ public class MainActivity extends AppCompatActivity implements MusicItemAdapter.
 
             @Override
             public void onMusicPlayStatusChanged(boolean isPlaying, MusicInfo musicInfo) {
-                updateFloatingPlayerUI(musicInfo, isPlaying);
-                if (isPlaying) {
-                    startUpdatingProgress();
+                // 如果音乐信息为null且不处于播放状态，则隐藏悬浮播放器
+                if (musicInfo == null && !isPlaying) {
+                    updateFloatingPlayerUI(null, false); // 隐藏悬浮播放器
+                    stopUpdatingProgress(); // 停止进度条更新
+                    Log.d(TAG, "onMusicPlayStatusChanged: Music stopped and cleared. Hiding floating player.");
                 } else {
-                    stopUpdatingProgress();
+                    // 正常更新播放/暂停状态
+                    updateFloatingPlayerUI(musicInfo, isPlaying);
+                    if (isPlaying) {
+                        startUpdatingProgress();
+                    } else {
+                        stopUpdatingProgress();
+                    }
                 }
             }
 
             @Override
             public void onMusicCompleted(MusicInfo nextMusicInfo) {
-                updateFloatingPlayerUI(nextMusicInfo, true);
+                // 如果下一首音乐信息为null，表示播放结束且没有后续歌曲，则隐藏悬浮播放器
+                if (nextMusicInfo == null) {
+                    updateFloatingPlayerUI(null, false);
+                    stopUpdatingProgress();
+                    Log.d(TAG, "onMusicCompleted: No next music. Hiding floating player.");
+                } else {
+                    updateFloatingPlayerUI(nextMusicInfo, true);
+                }
             }
 
             @Override
             public void onPlaylistChanged(List<MusicInfo> newPlaylist) {
-                // 当前用不到，但为以后功能预留
+                // 当播放列表改变时，如果列表为空，也隐藏悬浮播放器
+                if (newPlaylist == null || newPlaylist.isEmpty()) {
+                    updateFloatingPlayerUI(null, false);
+                    stopUpdatingProgress();
+                    Log.d(TAG, "onPlaylistChanged: Playlist is empty. Hiding floating player.");
+                } else {
+                    // 播放列表不为空时，确保悬浮播放器显示并更新为当前歌曲
+                    updateFloatingPlayerUI(musicPlayerService.getCurrentMusic(), musicPlayerService.isPlaying());
+                }
             }
 
             @Override
             public void onMusicError(String errorMessage) {
                 Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show();
+                // 播放出错时，也隐藏悬浮播放器
                 updateFloatingPlayerUI(null, false);
+                stopUpdatingProgress();
             }
 
             @Override
@@ -237,20 +271,13 @@ public class MainActivity extends AppCompatActivity implements MusicItemAdapter.
         });
 
         ivFloatingPlaylist.setOnClickListener(v -> {
-//            Toast.makeText(this, "播放列表功能待开发", Toast.LENGTH_SHORT).show();
-
             // 点击悬浮窗的播放列表按钮，显示 PlaylistDialogFragment
             if (isServiceBound && musicPlayerService != null) {
-
                 PlaylistDialogFragment playlistDialog = new PlaylistDialogFragment();
-
                 playlistDialog.show(getSupportFragmentManager(), "playlist_dialog");
-
             } else {
                 Toast.makeText(this, "播放服务未连接", Toast.LENGTH_SHORT).show();
             }
-
-
         });
     }
 
@@ -292,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements MusicItemAdapter.
             musicPlayerService.setPlayListAndIndex(musicList, position);
             Log.d(TAG, "onPlayMusic: Sent new playlist to service. Song: " + musicList.get(position).getMusicName());
 
-            // 2. 【核心修复】启动 MusicPlayerActivity
+            // 2. 启动 MusicPlayerActivity
             Intent intent = new Intent(MainActivity.this, MusicPlayerActivity.class);
             startActivity(intent);
             // 使用自定义动画 (从底部向上滑入)

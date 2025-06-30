@@ -239,42 +239,32 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
     @Override
     public void onPlaylistItemDelete(MusicInfo musicInfo, int position) {
         if (isServiceBound && musicPlayerService != null) {
-            List<MusicInfo> currentList = new ArrayList<>(musicPlayerService.getPlaylist());  // 获取播放列表的拷贝，避免在迭代时修改列表
+            List<MusicInfo> currentList = new ArrayList<>(musicPlayerService.getPlaylist());  // 获取播放列表的拷贝
 
             if (currentList != null && position >= 0 && position < currentList.size()) {
+                MusicInfo currentPlayingInService = musicPlayerService.getCurrentMusic(); // 获取当前服务中正在播放的歌曲
+
                 // 1. 从播放列表中移除歌曲
                 currentList.remove(position);
 
-                // 2. 如果删除的是当前播放歌曲
-                if (musicInfo.equals(musicPlayerService.getCurrentMusic())) {
-                    // 2.1 播放列表为空
-                    if (currentList.isEmpty()) {
-                        // 【修改】停止播放，并重置播放列表
-                        musicPlayerService.setPlayListAndIndex(new ArrayList<>(), -1);
-                        if (musicPlayerService.mediaPlayer != null) {
-                            musicPlayerService.mediaPlayer.stop();
-                        }
-                        dismiss();
+                // 2. 更新服务中的播放列表
+                // updatePlaylist 方法会处理 currentMusicIndex 的调整，并通知 onPlaylistChanged
+                musicPlayerService.updatePlaylist(currentList);
 
-                        // 【修改】通知 MainActivity 隐藏悬浮窗
-                        if (getActivity() instanceof MainActivity) {
-                            MainActivity activity = (MainActivity) getActivity();
-                            activity.updateFloatingPlayerUI(null, false);
-                        } else if (getActivity() instanceof MusicPlayerActivity) {
-                            // 如果是从 MusicPlayerActivity 删除的，则关闭该 Activity
+                // 3. 处理播放逻辑
+                if (musicInfo.equals(currentPlayingInService)) { // 如果删除的是当前播放歌曲
+
+
+                    if (currentList.isEmpty()) {
+                        // 播放列表为空，服务已通过 updatePlaylist -> clearCurrentMusicAndStop 停止
+                        dismiss(); // 关闭播放列表弹窗
+
+                        // 如果是从 MusicPlayerActivity 删除的，则关闭该 Activity
+                        if (getActivity() instanceof MusicPlayerActivity) {
                             MusicPlayerActivity activity = (MusicPlayerActivity) getActivity();
                             activity.finish();
                         }
-
-                        // 【修改】停止播放服务
-                        Intent serviceIntent = new Intent(getContext(), MusicPlayerService.class);
-                        getContext().stopService(serviceIntent);
-
-                        // 【新增】通知 MainActivity 播放列表已更改
-                        for (MusicPlayerService.OnMusicPlayerEventListener listener : musicPlayerService.listeners) {
-                            listener.onPlaylistChanged(new ArrayList<>());
-                        }
-
+                        // 服务停止已在 clearCurrentMusicAndStop 中处理，MainActivity 会收到通知隐藏悬浮窗
                     }
                     // 2.2 播放列表非空
                     else {
@@ -289,9 +279,11 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
                         }
                     }
                 }
+                // 如果删除的不是当前播放歌曲，服务会自行调整 currentMusicIndex (通过 updatePlaylist 中的逻辑)
+                // 并且不会停止当前播放。
 
 
-                
+
                 //  3. 更新播放列表
                 musicPlayerService.setPlayListAndIndex(currentList,0);
                 // 4. 通知所有监听器播放列表已更改
@@ -301,12 +293,10 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
 
 
 
-                // 5. 更新UI
+
+                // 4. 更新UI (updatePlaylist 已经通知了 onPlaylistChanged，这里再刷新一下列表适配器)
                 updatePlaylistUI(musicPlayerService.getPlaylist(), musicPlayerService.getCurrentMusic(), musicPlayerService.getLoopMode());
                 playlistAdapter.notifyDataSetChanged();
-
-
-
             }
         }
     }
