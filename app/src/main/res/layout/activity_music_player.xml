@@ -75,31 +75,73 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- 歌曲名称和歌手 -->
-        <TextView
-            android:id="@+id/tv_player_music_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="歌曲名称"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@android:color/white"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:gravity="center_horizontal"
-            android:layout_marginBottom="4dp"/>
 
-        <TextView
-            android:id="@+id/tv_player_author"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="歌手名称"
-            android:textSize="14sp"
-            android:textColor="#CCCCCC"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:gravity="center_horizontal"
-            android:layout_marginBottom="16dp"/>
+            android:orientation="horizontal"
+
+            >
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+
+                >
+
+                <!-- 歌曲名称和歌手 -->
+                <TextView
+                    android:id="@+id/tv_player_music_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="歌曲名称"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/white"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:gravity="start"
+
+                    />
+
+                <TextView
+                    android:id="@+id/tv_player_author"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="歌手名称"
+                    android:textSize="14sp"
+                    android:textColor="#CCCCCC"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:gravity="start"
+                    android:layout_marginBottom="16dp"/>
+            </LinearLayout>
+
+
+
+            <ImageView
+                android:id="@+id/iv_favorite"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="end"
+                android:layout_marginLeft="200dp"
+                android:src="@drawable/ic_favorite_border"
+
+                android:contentDescription="Favorite"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="8dp"/>
+
+
+
+
+
+
+
+        </LinearLayout>
+
 
         <!-- 进度条和时间 -->
         <LinearLayout
@@ -209,18 +251,6 @@
                 android:focusable="true"
                 android:padding="8dp"/>
 
-
-            <ImageView
-                android:id="@+id/iv_favorite"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:src="@drawable/ic_favorite_border"
-
-                android:contentDescription="Favorite"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:focusable="true"
-                android:padding="8dp"/>
 
 
 

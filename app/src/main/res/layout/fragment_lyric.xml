@@ -6,27 +6,50 @@
     android:layout_height="match_parent"
     tools:background="@android:color/transparent">
 
-    <!-- 歌词显示区域，使用ScrollView包裹TextView以实现滚动 -->
-    <ScrollView
+    <!-- 【修改】使用 RecyclerView 来显示歌词列表 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView_lyrics"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="24dp"
-        android:scrollbars="vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        tools:listitem="@layout/item_lyric_line" />
 
-        <TextView
-            android:id="@+id/tv_lyrics"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="歌词内容将显示在这里...\n\n(歌词解析和滚动功能待实现)"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
-            android:lineSpacingExtra="8dp"
 
-        />
-    </ScrollView>
+    <!-- 【新增】无歌词提示 -->
+    <TextView
+        android:id="@+id/tv_no_lyrics_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="暂无歌词"
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 【新增】错误提示 -->
+    <TextView
+        android:id="@+id/tv_error_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="歌词加载失败"
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
