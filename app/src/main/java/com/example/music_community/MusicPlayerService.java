@@ -66,7 +66,7 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
 
 
     // 【核心修改】将单个监听器改为线程安全的监听器列表
-    private final List<OnMusicPlayerEventListener> listeners = new CopyOnWriteArrayList<>();
+    final List<OnMusicPlayerEventListener> listeners = new CopyOnWriteArrayList<>();
 
 
 

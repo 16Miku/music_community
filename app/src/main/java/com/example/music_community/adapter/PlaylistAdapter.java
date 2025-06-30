@@ -94,5 +94,19 @@ public class PlaylistAdapter extends BaseQuickAdapter<MusicInfo, BaseViewHolder>
             musicNameTextView.setTextColor(ContextCompat.getColor(getContext(), android.R.color.black)); // 默认黑色
             authorTextView.setTextColor(ContextCompat.getColor(getContext(), android.R.color.darker_gray)); // 默认灰色
         }
+
+        deleteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (listener != null) {
+                    listener.onPlaylistItemDelete(item, holder.getAdapterPosition());
+                }
+            }
+        });
+
+
+
+
+
     }
 }

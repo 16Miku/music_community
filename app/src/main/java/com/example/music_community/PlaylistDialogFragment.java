@@ -126,6 +126,9 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
         ivLoopModePlaylist.setOnClickListener(v -> {
             if (isServiceBound && musicPlayerService != null) {
                 musicPlayerService.switchLoopMode();
+                MusicPlayerService.LoopMode currentLoopMode = musicPlayerService.getLoopMode();
+                updateLoopModeIcon(currentLoopMode);
+                updateLoopModeText(currentLoopMode);
             }
         });
 
@@ -236,10 +239,48 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
     @Override
     public void onPlaylistItemDelete(MusicInfo musicInfo, int position) {
         if (isServiceBound && musicPlayerService != null) {
-            // TODO: 调用 Service 的删除方法，并处理后续逻辑
-            Toast.makeText(getContext(), "删除歌曲功能待开发: " + musicInfo.getMusicName(), Toast.LENGTH_SHORT).show();
+            List<MusicInfo> currentList = musicPlayerService.getPlaylist();
+            if (currentList != null && !currentList.isEmpty() && position >= 0 && position < currentList.size()) {
+                // 1. 从播放列表中移除歌曲
+                currentList.remove(position);
+
+                // 2. 如果删除的是当前播放歌曲
+                if (musicInfo.equals(musicPlayerService.getCurrentMusic())) {
+                    // 2.1 播放列表为空
+                    if (currentList.isEmpty()) {
+                        musicPlayerService.setPlayListAndIndex(new ArrayList<>(), -1); // 清空播放列表
+                        dismiss();
+                    }
+                    // 2.2 播放列表非空
+                    else {
+                        // 2.2.1 顺序模式和单曲循环
+                        if (musicPlayerService.getLoopMode() == MusicPlayerService.LoopMode.SEQUENCE ||
+                                musicPlayerService.getLoopMode() == MusicPlayerService.LoopMode.SINGLE) {
+                            musicPlayerService.playNext();
+                        }
+                        // 2.2.2 随机模式
+                        else {
+                            musicPlayerService.playNext();
+                        }
+                    }
+                }
+
+                // 3. 更新UI
+                updatePlaylistUI(currentList, musicPlayerService.getCurrentMusic(), musicPlayerService.getLoopMode());
+                playlistAdapter.notifyDataSetChanged();
+
+                // 4. 通知 MainActivity 更新播放列表
+                if (isServiceBound) {
+                    musicPlayerService.setPlayListAndIndex(currentList,0);
+                    // 通知所有监听器播放列表已更改
+                    for (MusicPlayerService.OnMusicPlayerEventListener listener : musicPlayerService.listeners) {
+                        listener.onPlaylistChanged(currentList);
+                    }
+                }
+            }
         }
     }
+
 
     @Override
     public void onDetach() {
