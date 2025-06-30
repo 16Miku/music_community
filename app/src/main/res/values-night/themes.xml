@@ -51,4 +51,17 @@
         <item name="android:activityCloseEnterAnimation">@anim/slide_in_down</item>
         <item name="android:activityCloseExitAnimation">@anim/slide_out_down</item>
     </style>
+
+
+
+    <!-- 用于 PlaylistDialogFragment 的 BottomSheetDialog 主题 -->
+    <style name="BottomSheetDialogTheme" parent="Theme.Design.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/BottomSheetStyle</item>
+    </style>
+
+    <style name="BottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
+        <item name="android:background">@android:color/transparent</item>
+    </style>
+
+
 </resources>

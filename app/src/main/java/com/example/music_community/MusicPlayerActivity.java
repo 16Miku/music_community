@@ -379,8 +379,21 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
         });
 
         ivSongList.setOnClickListener(v -> {
-            Toast.makeText(this, "显示歌曲列表 ", Toast.LENGTH_SHORT).show();
-//            showSongListDialog();
+
+
+            // 点击歌曲列表按钮时，显示 PlaylistDialogFragment
+            if (isServiceBound && musicPlayerService != null) {
+
+                PlaylistDialogFragment playlistDialog = new PlaylistDialogFragment();
+
+                playlistDialog.show(getSupportFragmentManager(), "playlist_dialog");
+
+            } else {
+
+                Toast.makeText(this, "播放服务未连接", Toast.LENGTH_SHORT).show();
+            }
+
+
         });
 
         seekBarMusic.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {

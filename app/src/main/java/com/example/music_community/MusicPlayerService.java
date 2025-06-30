@@ -533,9 +533,10 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
         }
 
 
-        // 【核心修复】遍历所有监听器进行通知
+        // 这里应该通知音乐完成，而不是循环模式改变
         for (OnMusicPlayerEventListener listener : listeners) {
-            listener.onLoopModeChanged(currentLoopMode);
+
+            listener.onMusicCompleted(getCurrentMusic()); // 通知 Activity 播放完成，并传递下一首音乐信息
         }
 
 
@@ -777,4 +778,15 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
         }
         // 还可以覆盖其他方法，如 onStop, onPlayFromMediaId 等
     }
+
+
+
+
+    // 【新增】获取播放列表的方法
+    public List<MusicInfo> getPlaylist() {
+        return musicList;
+    }
+
+
+
 }
