@@ -165,7 +165,7 @@ public class PlaylistDialogFragment extends BottomSheetDialogFragment implements
 
             @Override
             public void onMusicError(String errorMessage) {
-                Toast.makeText(getContext(), "播放出错: " + errorMessage, Toast.LENGTH_SHORT).show();
+//                Toast.makeText(getContext(), "播放出错: " + errorMessage, Toast.LENGTH_SHORT).show();
             }
 
             @Override

@@ -601,15 +601,15 @@ public class MusicPlayerService extends Service implements MediaPlayer.OnComplet
     // --- MediaPlayer.OnErrorListener 回调 ---
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
-        Log.e(TAG, "MediaPlayer 播放错误: what=" + what + ", extra=" + extra);
+//        Log.e(TAG, "MediaPlayer 播放错误: what=" + what + ", extra=" + extra);
         // 释放资源并尝试播放下一首或提示用户
         mp.reset();
-        String errorMessage = "播放出错，错误码: " + what;
-        Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
+//        String errorMessage = "播放出错，错误码: " + what;
+//        Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
 
         // 遍历所有监听器进行通知
         for (OnMusicPlayerEventListener listener : listeners) {
-            listener.onMusicError(errorMessage);
+//            listener.onMusicError(errorMessage);
         }
 
         playNext(); // 尝试播放下一首

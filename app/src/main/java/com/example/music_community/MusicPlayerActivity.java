@@ -286,7 +286,7 @@ public class MusicPlayerActivity extends AppCompatActivity implements MusicPlayb
 
             @Override
             public void onMusicError(String errorMessage) {
-                Toast.makeText(MusicPlayerActivity.this, "播放出错: " + errorMessage, Toast.LENGTH_SHORT).show();
+//                Toast.makeText(MusicPlayerActivity.this, "播放出错: " + errorMessage, Toast.LENGTH_SHORT).show();
 
                 // 更新待处理状态并尝试同步
                 pendingMusicInfo = musicPlayerService.getCurrentMusic();

@@ -1,4 +1,30 @@
 
+
+
+
+# 实践课程-⾳乐社区第三天晚上
+
+APK：
+
+[music_day3晚上.apk](APK/music_day3%E6%99%9A%E4%B8%8A.apk)
+
+
+视频：
+
+[music_day3晚上.mp4](media/music_day3%E6%99%9A%E4%B8%8A.mp4)
+
+
+
+截图：
+
+![day3-night-1.png](media/day3-night-1.png)
+
+![day3-night-2.png](media/day3-night-2.png)
+
+![day3-night-3.png](media/day3-night-3.png)
+
+![day3-night-4.png](media/day3-night-4.png)
+
 # 实践课程-⾳乐社区第三天
 
 APK：
