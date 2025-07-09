@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = com.example.music_community" | Set-Content -Path replacements.txt"
+    namespace = "com.example.music_community"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = com.example.music_community" | Set-Content -Path replacements.txt"
+        applicationId = "com.example.music_community"
         minSdk = 24
         targetSdk = 35
         versionCode = 1

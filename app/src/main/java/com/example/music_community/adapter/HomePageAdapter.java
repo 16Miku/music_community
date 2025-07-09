@@ -5,7 +5,6 @@ import android.os.Looper; // 导入 Looper
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -22,9 +21,6 @@ import com.example.music_community.model.MusicInfo;
 import java.util.HashMap; // 导入 HashMap
 import java.util.List;
 import java.util.Map; // 导入 Map
-
-import com.example.music_community.adapter.MusicItemAdapter; // 确保导入
-
 
 
 public class HomePageAdapter extends BaseMultiItemQuickAdapter<HomePageInfo, BaseViewHolder> {

@@ -1,7 +1,5 @@
 package com.example.music_community.adapter;
 
-import android.content.Intent;
-import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;

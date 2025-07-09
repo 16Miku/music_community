@@ -1,6 +1,5 @@
 package com.example.music_community.adapter;
 
-import android.graphics.Color;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;

@@ -1,4 +1,3 @@
-// B:\Android_Project\music-community\music_community\app\src\main\java\com\example\music_community\MainActivity.java
 package com.example.music_community;
 
 import android.content.ComponentName;
@@ -30,11 +29,7 @@ import com.example.music_community.model.HomePageResponse;
 import com.example.music_community.model.MusicInfo;
 import com.example.music_community.network.RetrofitClient;
 import com.scwang.smart.refresh.layout.SmartRefreshLayout;
-import com.scwang.smart.refresh.layout.api.RefreshLayout;
-import com.scwang.smart.refresh.layout.listener.OnLoadMoreListener;
-import com.scwang.smart.refresh.layout.listener.OnRefreshListener;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 

@@ -1,7 +1,6 @@
 package com.example.music_community;
 
 // 导入 MusicPlaybackFragment 类，因为接口方法中会用到它
-import com.example.music_community.MusicPlaybackFragment;
 
 /**
  * MusicPlaybackFragment 的回调监听器接口。

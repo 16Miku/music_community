@@ -1,4 +1,3 @@
-// B:\Android_Project\music-community\music_community\app\src\main\java\com\example\music_community\MusicPlayerService.java
 package com.example.music_community;
 
 import android.app.Notification;
